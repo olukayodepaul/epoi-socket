@@ -32,7 +32,7 @@ defmodule DartMessagingServer.Application do
       {Registry, keys: :unique, name: DeviceIdRegistry},
       {Registry, keys: :unique, name: EIdRegistry},
     ]
-      
+    
     opts = [strategy: :one_for_one, name: DartMessagingServer.Supervisor]
     Supervisor.start_link(children, opts)
   end

@@ -11,4 +11,5 @@ defmodule Util.RegistryHelper do
     Registry.register(DeviceIdRegistry, device_id, nil)
     Registry.register(EIdRegistry, eid, device_id)
   end
+  
 end

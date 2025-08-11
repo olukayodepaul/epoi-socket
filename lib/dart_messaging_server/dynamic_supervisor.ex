@@ -11,7 +11,7 @@ defmodule DartMessagingServer.DynamicSupervisor do
   end
 
   @spec start_session({any, any, any, pid}) :: {:ok, pid} | {:error, any}
-  def start_session({_eid, device_id, _ip, _ws_pid} = state) do
+  def start_session({eid, device_id, _ip, _ws_pid} = state) do
     child_spec = %{
       id: {:connection_session, device_id},
       start: {Application.Processor, :start_link, [state]},
@@ -21,15 +21,15 @@ defmodule DartMessagingServer.DynamicSupervisor do
 
     case DynamicSupervisor.start_child(__MODULE__, child_spec) do
       {:ok, pid} ->
-        Logger.info("Session started for #{inspect(device_id)}")
+        Logger.info("Session started successfully for eid=#{inspect(eid)}, device_id=#{inspect(device_id)}, pid=#{inspect(pid)}")
         {:ok, pid}
 
       {:error, {:already_started, pid}} ->
-        Logger.warning("Session already started for #{inspect(device_id)}")
+        Logger.warning("Session already started for device_id=#{inspect(device_id)}, pid=#{inspect(pid)}")
         {:ok, pid}
 
       {:error, reason} ->
-        Logger.error("Failed to start session for #{inspect(device_id)}: #{inspect(reason)}")
+        Logger.error("Failed to start session for device_id=#{inspect(device_id)}. Reason: #{inspect(reason)}")
         {:error, reason}
     end
   end

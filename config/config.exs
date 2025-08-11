@@ -6,3 +6,4 @@ config :dart_messaging_server, :server,
   certfile: "priv/cert.pem",
   keyfile: "priv/key.pem",
   route: "/application/development"
+  
