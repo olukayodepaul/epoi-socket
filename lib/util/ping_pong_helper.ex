@@ -43,10 +43,10 @@ defmodule Util.Ping do
 
     case Registry.lookup(DeviceIdRegistry, device_id) do
       [{pid, _}] ->
-        Logger.info("Forwarding pong to CallSession for #{device_id}")
+        Logger.info("Forwarding pong to Application.Processor for #{device_id}")
         send(pid, :received_pong)
       [] ->
-        Logger.warning("No CallSession GenServer found for pong: #{device_id}")
+        Logger.warning("No Application.Processor GenServer found for pong: #{device_id}")
     end
     {:ok, state}
   end

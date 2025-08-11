@@ -3,26 +3,25 @@ defmodule DartMessagingServer.Socket do
   require Logger
 
   alias Util.{Ping, TerminateHandler}
+  alias Security.TokenVerifier
 
   # Called when HTTP request matches this route and upgrades to WebSocket
   def init(req, _state) do
 
+    case TokenVerifier.verify_from_header(:cowboy_req.header("token", req)) do
+      {:ok, _claims} -> 
+        
+      {:error, _reason} -> 
 
-    #Time to connect.
-    0. look token from etc if not confirm from redis if not then 
-    1. verification of token locally using asymmentric key
-    2. 
+    end
 
-    # _token = :cowboy_req.header("token", req)
-    # _type = :cowboy_req.header("type", req)
+    eid = "1"
+    device_id = :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)
+    ip = "0.0.3.1"
 
-    # eid = "1"
-    # device_id = :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)
-    # ip = "0.0.3.1"
-
-    # state = {eid, device_id, ip}
-    # IO.inspect("0 :init -> upgrading to websocket")
-    # {:cowboy_websocket, req, {:new, state}}
+    state = {eid, device_id, ip}
+    IO.inspect("0 :init -> upgrading to websocket")
+    {:cowboy_websocket, req, {:new, state}}
   end
 
   def websocket_init(state = {:new,{eid, device_id, ip}}) do
@@ -45,3 +44,4 @@ defmodule DartMessagingServer.Socket do
 
 
 end
+
