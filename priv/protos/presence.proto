@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package presence;
+
+message IndividualPresence {
+  string from_jid = 1;         // sender's JID (user ID)
+  string from_device_id = 2;   // sender's device ID
+  string to_jid = 3;           // recipient's JID (user ID)
+  string to_device_id = 4;     // recipient's device ID
+  Type type = 5;               // activity indicator
+  int64 timestamp = 6;         // UNIX epoch time (optional)
+}
+
+enum Type {
+  UNKNOWN = 0;
+  TYPING = 1;
+  PAUSED = 2;
+  RECORDING = 3;
+  STOPPED = 4;
+  VIEWING = 5;
+}
+

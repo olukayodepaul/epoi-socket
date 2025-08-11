@@ -3,7 +3,7 @@ defmodule Application.Processor do
   use GenServer
   require Logger
 
-  alias Util.{RegistryHelper, Ping}
+  alias Util.{RegistryHelper, Ping, Ets}
 
   def start_link({_eid, device_id, _ip, _ws_pid} = state) do
     GenServer.start_link(__MODULE__, state, name: Util.RegistryHelper.via_registry(device_id))
@@ -13,6 +13,7 @@ defmodule Application.Processor do
   def init({eid, device_id, ip, ws_pid} = _state) do
     RegistryHelper.register(eid, device_id)
     Ping.schedule_ping(device_id)
+    Ets.ensure_tables()
     {:ok, %{missed_pongs: 0, eid: eid, device_id: device_id, ip: ip, ws_pid: ws_pid}}
   end
 
