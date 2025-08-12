@@ -13,7 +13,6 @@ defmodule Application.Processor do
   def init({eid, device_id, ip, ws_pid} = _state) do
     RegistryHelper.register(eid, device_id)
     Ping.schedule_ping(device_id)
-    TokenRevoked.ensure_tables()
     {:ok, %{missed_pongs: 0, eid: eid, device_id: device_id, ip: ip, ws_pid: ws_pid}}
   end
 

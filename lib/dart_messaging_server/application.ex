@@ -31,6 +31,7 @@ defmodule DartMessagingServer.Application do
       {DartMessagingServer.DynamicSupervisor, []},
       {Registry, keys: :unique, name: DeviceIdRegistry},
       {Registry, keys: :unique, name: EIdRegistry},
+      {Redix, name: :redix},
     ]
     
     opts = [strategy: :one_for_one, name: DartMessagingServer.Supervisor]

@@ -1,4 +1,5 @@
 defmodule Security.TokenVerifier do
+  
   use Joken.Config
   require Logger
 
@@ -36,7 +37,7 @@ defmodule Security.TokenVerifier do
   def extract_token("Bearer " <> token) when is_binary(token), do: {:ok, token}
   def extract_token(token) when is_binary(token), do: {:ok, token}
 
-  def verify_from_header(header) do
+  def token_verification(header) do
     case extract_token(header) do
       {:ok, token} -> verify_token(token)
       _ ->
@@ -48,13 +49,58 @@ defmodule Security.TokenVerifier do
   def verify_token(token) do
     case verify_and_validate(token, verifier()) do
       {:ok, claims} ->
-        Logger.info("Token verified successfully: jti=#{claims["jti"]}")
-        {:ok, claims}
+        if token_revoked?(claims["jti"]) do
+          Logger.warning("Token revoked: jti=#{claims["jti"]}")
+          {:error, :invalid_token}
+        else
+          Logger.info("Token verified successfully: jti=#{claims["jti"]}")
+          {:ok, claims}
+        end
+
       {:error, reason} ->
         Logger.warning("Token verification failed: #{inspect(reason)}")
-        {:error, reason}
+        {:error, :invalid_token}
     end
   end
 
+  def token_revoked?(_jti), do: false
+
+  def extract_jti(token) do
+    try do
+      case Joken.peek_claims(token) do
+        {:ok, %{"jti" => jti}} when is_binary(jti) -> {:ok, jti}
+        _ ->
+          Logger.warning("JTI missing or invalid in token")
+          {:error, :invalid_token}
+      end
+    rescue
+      _ ->
+        Logger.error("Failed to extract JTI from token (exception)")
+        {:error, :invalid_token}
+    end
+  end
+
+  def check_token_expiration(token) do
+    try do
+      case Joken.peek_claims(token) do
+        {:ok, %{"exp" => exp}} when is_integer(exp) ->
+          now = DateTime.utc_now() |> DateTime.to_unix()
+          if exp > now do
+            {:ok, :valid}
+          else
+            Logger.warning("Token expired at #{exp}, current time #{now}")
+            {:error, :token_expired}
+          end
+
+        _ ->
+          Logger.warning("Expiration claim missing or invalid in token")
+          {:error, :invalid_token}
+      end
+    rescue
+      _ ->
+        Logger.error("Failed to check token expiration (exception)")
+        {:error, :invalid_token}
+    end
+  end
 
 end
