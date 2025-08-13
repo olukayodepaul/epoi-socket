@@ -1,9 +1,11 @@
 defmodule Util.Ping do
   require Logger
-
-  @ping_interval 20_000 
-  @max_missed_pongs 3 
+  
   alias Util.DisconnectReason
+  alias Registries.PingPong
+  alias ApplicationServer.Configuration
+
+  @max_missed_pongs Configuration.max_missed_pongs()
 
   def handle_ping(%{missed_pongs: missed, eid: _eid, device_id: device_id, ws_pid: ws_pid} = state) do
     if missed >= @max_missed_pongs do
@@ -25,12 +27,7 @@ defmodule Util.Ping do
   end
 
   def schedule_ping(device_id) do
-    case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
-      [{pid, _}] -> 
-        Process.send_after(pid, :send_ping, @ping_interval)
-      [] -> 
-        Logger.warning("No registry entry for #{device_id}, cannot schedule ping")
-    end
+    PingPong.schedule_ping_registry(device_id)
   end
 
   defp build_disconnect_message do
@@ -40,14 +37,7 @@ defmodule Util.Ping do
 
   def handle_pong(device_id, state) do
     Logger.info("Received pong from client: #{device_id}")
-
-    case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
-      [{pid, _}] ->
-        Logger.info("Forwarding pong to Application.Processor for #{device_id}")
-        send(pid, :received_pong)
-      [] ->
-        Logger.warning("No Application.Processor GenServer found for pong: #{device_id}")
-    end
+    PingPong.handle_pong_registry(device_id)
     {:ok, state}
   end
 
