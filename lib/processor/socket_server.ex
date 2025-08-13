@@ -6,21 +6,23 @@ defmodule DartMessagingServer.Socket do
   alias Security.TokenVerifier
 
   def init(req, _state) do
-
-    IO.inspect(TokenVerifier.verify_from_header(:cowboy_req.header("token", req)))
-    case TokenVerifier.verify_from_header(:cowboy_req.header("token", req)) do
-      {:error, :signature_error} ->  Connections.reject_connection(req,"signature error")
-      {:error, reason} -> Connections.reject_connection(req,"#{reason[:message]} #{reason[:claim]}")
-      {:ok, claims} -> 
-        case TokenRevoked.revoked?(claims["jti"]) do
-          false -> Connections.accept_connection(req, claims)
-          true -> Connections.reject_connection(req,"Token revoked")
-        end 
+    case TokenVerifier.extract_token(:cowboy_req.header("token", req)) do
+    {:ok, token} ->  
+      case TokenVerifier.verify_token(token) do
+        {:error, :token_invoked} -> Connections.reject(req, :token_invoked)
+        {:reason, :invalid_token} -> Connections.reject(req, :invalid_token)
+        {:ok, claims} -> 
+          case TokenRevoked.revoked?(claims["jti"]) do
+            false -> Connections.accept(req, claims)
+            true -> Connections.reject(req,"Token revoked")
+          end 
+      end
+    {:error, :invalid_token} ->  Connections.reject(req, :invalid_token)
     end
   end
 
-  def websocket_init(state = {:new,{eid, device_id, conn_time, ip}}) do
-    DartMessagingServer.DynamicSupervisor.start_session({eid, device_id, conn_time, ip, self()})
+  def websocket_init(state = {:new,{eid, device_id}}) do
+    DartMessagingServer.DynamicSupervisor.start_session({eid, device_id, self()})
     {:ok, state}
   end
 
@@ -29,14 +31,13 @@ defmodule DartMessagingServer.Socket do
     {:reply, :ping, state}
   end
 
-  def websocket_handle(:pong, {:new,{_eid, device_id, _conn_time, _ip}} = state) do
+  def websocket_handle(:pong, {:new,{_eid, device_id}} = state) do
     Ping.handle_pong(device_id, state)
   end
 
   def terminate(reason, _req, state) do
     TerminateHandler.handle_terminate(reason, state)
   end
-
 
 end
 

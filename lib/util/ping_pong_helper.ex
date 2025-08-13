@@ -5,7 +5,7 @@ defmodule Util.Ping do
   @max_missed_pongs 3 
   alias Util.DisconnectReason
 
-  def handle_ping(%{missed_pongs: missed, eid: _eid, device_id: device_id, ip: _ip, ws_pid: ws_pid} = state) do
+  def handle_ping(%{missed_pongs: missed, eid: _eid, device_id: device_id, ws_pid: ws_pid} = state) do
     if missed >= @max_missed_pongs do
       Logger.warning("Missed pong limit reached for #{device_id}, closing connection gracefully")
       send(ws_pid, {:send_binary, build_disconnect_message()})
