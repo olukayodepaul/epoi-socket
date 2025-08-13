@@ -5,12 +5,12 @@ defmodule Application.Processor do
 
   alias Util.{RegistryHelper, Ping, TokenRevoked}
 
-  def start_link({_eid, device_id, _ip, _ws_pid} = state) do
+  def start_link({_eid, device_id, _conn_time, _ip, _ws_pid} = state) do
     GenServer.start_link(__MODULE__, state, name: Util.RegistryHelper.via_registry(device_id))
   end
   
   @impl true
-  def init({eid, device_id, ip, ws_pid} = _state) do
+  def init({eid, device_id,  conn_time, ip, ws_pid} = _state) do
     RegistryHelper.register(eid, device_id)
     Ping.schedule_ping(device_id)
     {:ok, %{missed_pongs: 0, eid: eid, device_id: device_id, ip: ip, ws_pid: ws_pid}}

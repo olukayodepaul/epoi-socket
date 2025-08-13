@@ -50,7 +50,7 @@ HGETALL token_revocation
 3️⃣ Insert into token revoke to test revoked token manually
 
 ```
-HSET token_revocation "test-jti-123" '{"jti":"test-jti-123","exp":1723429827}'
+HSET token_revocation "31dhnp2h4997j94ke40000t1" '{"jti":"31dhnp2h4997j94ke40000t1","exp":1723429827}'
 ```
 
 4️⃣ Check if it exists

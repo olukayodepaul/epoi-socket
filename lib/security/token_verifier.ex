@@ -1,5 +1,4 @@
 defmodule Security.TokenVerifier do
-  
   use Joken.Config
   require Logger
 
@@ -12,6 +11,7 @@ defmodule Security.TokenVerifier do
     |> add_claim("jti", fn -> System.unique_integer([:positive]) |> Integer.to_string() end, &is_binary/1)
     |> add_claim("type", nil, &(&1 in ["access", "refresh"]))
   end
+
 
   defp load_public_key do
     File.read!(@public_key_path)
@@ -37,7 +37,7 @@ defmodule Security.TokenVerifier do
   def extract_token("Bearer " <> token) when is_binary(token), do: {:ok, token}
   def extract_token(token) when is_binary(token), do: {:ok, token}
 
-  def token_verification(header) do
+  def verify_from_header(header) do
     case extract_token(header) do
       {:ok, token} -> verify_token(token)
       _ ->
@@ -59,7 +59,7 @@ defmodule Security.TokenVerifier do
 
       {:error, reason} ->
         Logger.warning("Token verification failed: #{inspect(reason)}")
-        {:error, :invalid_token}
+        {:error, reason}
     end
   end
 
@@ -102,5 +102,6 @@ defmodule Security.TokenVerifier do
         {:error, :invalid_token}
     end
   end
-
 end
+
+
