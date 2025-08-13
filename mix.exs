@@ -37,7 +37,8 @@ defmodule DartMessagingServer.MixProject do
 
       #elixir project
       {:redix, ">= 1.5.0"},
-      {:phoenix, "~> 1.7"}
+      {:phoenix, "~> 1.7"},
+      {:horde, "~> 0.8"}
     ]
   end
 end

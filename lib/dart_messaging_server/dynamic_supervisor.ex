@@ -3,11 +3,11 @@ defmodule DartMessagingServer.DynamicSupervisor do
   require Logger
 
   def start_link(_args) do
-    DynamicSupervisor.start_link(__MODULE__, :ok, name: __MODULE__)
+    Horde.DynamicSupervisor.start_link(__MODULE__, :ok, name: __MODULE__)
   end
 
   def init(:ok) do
-    DynamicSupervisor.init(strategy: :one_for_one)
+    Horde.DynamicSupervisor.init(strategy: :one_for_one)
   end
 
   @spec start_session({any, any , pid}) :: {:ok, pid} | {:error, any}
@@ -19,7 +19,7 @@ defmodule DartMessagingServer.DynamicSupervisor do
       shutdown: 5000
     }
 
-    case DynamicSupervisor.start_child(__MODULE__, child_spec) do
+    case Horde.DynamicSupervisor.start_child(__MODULE__, child_spec) do
       {:ok, pid} ->
         Logger.info("Session started successfully for eid=#{inspect(eid)}, device_id=#{inspect(device_id)}, pid=#{inspect(pid)}")
         {:ok, pid}

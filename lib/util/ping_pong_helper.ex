@@ -1,7 +1,7 @@
 defmodule Util.Ping do
   require Logger
 
-  @ping_interval 20_000    # Send ping every 20 seconds
+  @ping_interval 20_000 
   @max_missed_pongs 3 
   alias Util.DisconnectReason
 
@@ -25,7 +25,7 @@ defmodule Util.Ping do
   end
 
   def schedule_ping(device_id) do
-    case Registry.lookup(DeviceIdRegistry, device_id) do
+    case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
       [{pid, _}] -> 
         Process.send_after(pid, :send_ping, @ping_interval)
       [] -> 
@@ -41,7 +41,7 @@ defmodule Util.Ping do
   def handle_pong(device_id, state) do
     Logger.info("Received pong from client: #{device_id}")
 
-    case Registry.lookup(DeviceIdRegistry, device_id) do
+    case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
       [{pid, _}] ->
         Logger.info("Forwarding pong to Application.Processor for #{device_id}")
         send(pid, :received_pong)

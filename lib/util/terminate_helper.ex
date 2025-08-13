@@ -7,7 +7,7 @@ defmodule Util.TerminateHandler do
   def handle_terminate(reason, {:new,{_eid, device_id, _ip}}) do
     Logger.info("WebSocket terminated for #{device_id}, reason: #{inspect(reason)}")
 
-    case Registry.lookup(DeviceIdRegistry, device_id) do
+    case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
       [{pid, _}] when is_pid(pid) ->
         Logger.info("Sending stop signal to Application.Processor for #{device_id}")
         send(pid, :stop_genserver_session)

@@ -58,3 +58,35 @@ HSET token_revocation "31dhnp2h4997j94ke40000t1" '{"jti":"31dhnp2h4997j94ke40000
 ```
 HEXISTS token_revocation "31dhlam7qgsih94ke40000q1"
 ```
+
+### register global registry to manage multiple socket put one registry Horde
+
+install {:horde, "~> 0.8"}
+
+```
+{:horde, "~> 0.8"}
+```
+
+RUN on each system with domain
+
+```
+iex --name server_a@wsone.com --cookie mysecret -S mix
+iex --name server_b@wstwo.com --cookie mysecret -S mix
+```
+
+set of configuration for the global horde
+
+```
+children = [
+  {Horde.Registry,name: DeviceIdRegistry, keys: :unique, members: :auto},
+  {Horde.Registry, name: EIdRegistry, keys: :unique, members: :auto},
+]
+```
+
+Connect the nodes (manual, no libcluster)
+
+```
+RUN inside each
+Node.connect(:"server_a@wsone.com")
+Node.connect(:"server_b@wsone.com")
+```

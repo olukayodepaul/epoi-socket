@@ -29,8 +29,10 @@ defmodule DartMessagingServer.Application do
     children = [
       cowboy_spec,
       {DartMessagingServer.DynamicSupervisor, []},
-      {Registry, keys: :unique, name: DeviceIdRegistry},
-      {Registry, keys: :unique, name: EIdRegistry},
+      # {Registry, keys: :unique, name: DeviceIdRegistry},
+      {Horde.Registry,name: DeviceIdRegistry, keys: :unique, members: :auto},
+      # {Registry, keys: :unique, name: EIdRegistry},
+      {Horde.Registry, name: EIdRegistry, keys: :unique, members: :auto},
       {Redix, name: :redix},
     ]
     
