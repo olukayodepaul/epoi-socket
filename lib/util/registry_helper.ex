@@ -5,6 +5,7 @@ defmodule Util.RegistryHelper do
 
   # Returns the via tuple for GenServer name registration for device_id
   def via_registry(device_id), do: {:via, Horde.Registry, {DeviceIdRegistry, device_id}}
+  def via_monitor_registry(user_id), do: {:via, Horde.Registry, {UserRegistry, user_id}}
 
   # Register process in both registries: EIdRegistry by eid, DeviceIdRegistry by device_id
   def register(eid, device_id) do
