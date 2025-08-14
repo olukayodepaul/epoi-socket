@@ -2,22 +2,27 @@ defmodule DartMessagingServer.Socket do
   @behaviour :cowboy_websocket
   require Logger
 
-  alias Util.{Ping, TerminateHandler, Connections, TokenRevoked}
+  alias Util.{
+    PingPongHelper, 
+    # TerminateHandler, 
+    ConnectionsHelper, 
+    TokenRevoked
+  }
   alias Security.TokenVerifier
 
   def init(req, _state) do
     case TokenVerifier.extract_token(:cowboy_req.header("token", req)) do
     {:ok, token} ->  
       case TokenVerifier.verify_token(token) do
-        {:error, :token_invoked} -> Connections.reject(req, :token_invoked)
-        {:reason, :invalid_token} -> Connections.reject(req, :invalid_token)
+        {:error, :token_invoked} -> ConnectionsHelper.reject(req, :token_invoked)
+        {:reason, :invalid_token} -> ConnectionsHelper.reject(req, :invalid_token)
         {:ok, claims} -> 
           case TokenRevoked.revoked?(claims["jti"]) do
-            false -> Connections.accept(req, claims)
-            true -> Connections.reject(req,"Token revoked")
+            false -> ConnectionsHelper.accept(req, claims)
+            true -> ConnectionsHelper.reject(req,"Token revoked")
           end 
       end
-    {:error, :invalid_token} ->  Connections.reject(req, :invalid_token)
+    {:error, :invalid_token} ->  ConnectionsHelper.reject(req, :invalid_token)
     end
   end
 
@@ -32,12 +37,13 @@ defmodule DartMessagingServer.Socket do
   end
 
   def websocket_handle(:pong, {:new,{_eid, device_id}} = state) do
-    Ping.handle_pong(device_id, state)
+    PingPongHelper.handle_pong(device_id, state)
   end
 
-  def terminate(reason, _req, state) do
-    TerminateHandler.handle_terminate(reason, state)
-  end
+  # def terminate(reason, _req, state) do
+  #   IO.inspect("let get here first")
+  #   TerminateHandler.handle_terminate(reason, state)
+  # end
 
 end
 

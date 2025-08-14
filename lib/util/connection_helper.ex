@@ -1,4 +1,4 @@
-defmodule Util.Connections do
+defmodule Util.ConnectionsHelper do
 
   require Logger
 
