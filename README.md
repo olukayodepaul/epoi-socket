@@ -90,3 +90,21 @@ RUN inside each
 Node.connect(:"server_a@wsone.com")
 Node.connect(:"server_b@wsone.com")
 ```
+
+## check registry
+
+1️⃣ Check if the registry itself is alive
+
+```
+iex> Process.whereis(DeviceIdRegistry)
+#PID<0.123.0>   # => registry is running
+nil             # => registry is not running
+```
+
+2️⃣ Check if a specific device GenServer is registered (individual)
+
+```
+iex> Horde.Registry.lookup(DeviceIdRegistry, "abc12s33")
+[{#PID<0.320.0>, nil}]   # => the GenServer for this device is running
+[]                       # => the GenServer is terminated or not registered
+```

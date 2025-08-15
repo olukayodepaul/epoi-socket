@@ -8,5 +8,5 @@ config :dart_messaging_server, :server,
   route: "/application/development",
   sign_alg: "RS256",
   pb_key_file_path: "priv/keys/public.pem",
-  ping_interval: 10_000,
+  ping_interval: 5_000,
   max_missed_pongs: 2

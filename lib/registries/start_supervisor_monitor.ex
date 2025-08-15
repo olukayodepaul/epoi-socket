@@ -14,7 +14,16 @@ defmodule Registries.StartSupervisorMonitor do
   def terminate_monitor(user_id, device_id, eid, ws_pid) do
     case Horde.Registry.lookup(UserRegistry, user_id) do
       [{pid, _}] ->
-        GenServer.cast(pid, {:stop_monitor, %{device_id: device_id, eid: eid, ws_pid: ws_pid}})
+        GenServer.cast(pid, {:stop_monitor, %{user_id: user_id, device_id: device_id, eid: eid, ws_pid: ws_pid}})
+      [] ->
+        Logger.warning("No registry entry for #{user_id}, cannot stop monitor")
+    end
+  end
+
+  def terminate_device(user_id, device_id, eid, ws_pid) do
+    case Horde.Registry.lookup(DeviceIdRegistry, user_id) do
+      [{pid, _}] ->
+        GenServer.cast(pid, {:stop_genserver_session, %{user_id: user_id, device_id: device_id, eid: eid, ws_pid: ws_pid}})
       [] ->
         Logger.warning("No registry entry for #{user_id}, cannot stop monitor")
     end

@@ -4,7 +4,7 @@ defmodule DartMessagingServer.Socket do
 
   alias Util.{
     PingPongHelper, 
-    # TerminateHandler, 
+    TerminateHandler, 
     ConnectionsHelper, 
     TokenRevoked
   }
@@ -26,8 +26,8 @@ defmodule DartMessagingServer.Socket do
     end
   end
 
-  def websocket_init(state = {:new,{eid, device_id}}) do
-    DartMessagingServer.DynamicSupervisor.start_session({eid, device_id, self()})
+  def websocket_init(state = {:new,{user_id, eid, device_id}}) do
+    DartMessagingServer.DynamicSupervisor.start_session({user_id, eid, device_id, self()})
     {:ok, state}
   end
 
@@ -36,14 +36,13 @@ defmodule DartMessagingServer.Socket do
     {:reply, :ping, state}
   end
 
-  def websocket_handle(:pong, {:new,{_eid, device_id}} = state) do
+  def websocket_handle(:pong, {:new,{_user_id, _eid, device_id}} = state) do
     PingPongHelper.handle_pong(device_id, state)
   end
 
-  # def terminate(reason, _req, state) do
-  #   IO.inspect("let get here first")
-  #   TerminateHandler.handle_terminate(reason, state)
-  # end
+  def terminate(reason, _req, state) do
+    TerminateHandler.handle_terminate(reason, state)
+  end
 
 end
 

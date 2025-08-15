@@ -10,8 +10,8 @@ defmodule DartMessagingServer.DynamicSupervisor do
     Horde.DynamicSupervisor.init(strategy: :one_for_one)
   end
 
-  @spec start_session({any, any , pid}) :: {:ok, pid} | {:error, any}
-  def start_session({eid, device_id, _ws_pid} = state) do
+  @spec start_session({any, any, any , pid}) :: {:ok, pid} | {:error, any}
+  def start_session({_user_id, eid, device_id, _ws_pid} = state) do
     child_spec = %{
       id: {:connection_session, device_id},
       start: {Application.Processor, :start_link, [state]},
