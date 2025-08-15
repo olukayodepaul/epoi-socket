@@ -3,28 +3,27 @@ defmodule Application.Monitor do
   require Logger
 
   alias Util.RegistryHelper
+  alias DartMessagingServer.MonitorDynamicSupervisor
 
+  # Use GenServer.start/3 instead of start_link/3 to detach from the caller
   def start_link(user_id) do
-    GenServer.start_link(__MODULE__, user_id, name: RegistryHelper.via_monitor_registry(user_id))
+    GenServer.start(__MODULE__, user_id, name: RegistryHelper.via_monitor_registry(user_id))
   end
 
   def init(user_id) do
     Logger.info("MotherServer init for user_id=#{user_id}")
-    # :ets.new(:user_devices, [:named_table, :set, :public])
-    # :ets.new(:messages, [:named_table, :set, :public])
     {:ok, %{user_id: user_id, devices: %{}}}
   end
 
-  def handle_cast({:stop_monitor, %{user_id: user_id}}, state) do
-    #How to terminate the mother. check if any child is existing on tye mother cadel
-    IO.inspect("GenServer Terminated Pass 6")
-    IO.inspect("Reaching the parent information from child #{user_id} #{user_id}")
+  def handle_cast({:stop_monitor, %{eid: _eid}}, state) do
     {:stop, :normal, state}
   end
 
+  # def handle_cast({:start_mother, user_id}, state) do
+  #   MonitorDynamicSupervisor.start_mother(user_id)
+  #   {:noreply, state}
+  # end
 end
-
-
 
 
 # # Insert or update device:

@@ -1,16 +1,11 @@
 defmodule Util.RegistryHelper do
   @moduledoc """
-  Helper functions for registering and looking up processes in registries.
+  Helper functions for getting via tuples for device and user GenServers.
   """
 
-  # Returns the via tuple for GenServer name registration for device_id
+  # Returns the via tuple for GenServer name registration for a device
   def via_registry(device_id), do: {:via, Horde.Registry, {DeviceIdRegistry, device_id}}
-  def via_monitor_registry(user_id), do: {:via, Horde.Registry, {UserRegistry, user_id}}
 
-  # Register process in both registries: EIdRegistry by eid, DeviceIdRegistry by device_id
-  def register(eid, device_id) do
-    Horde.Registry.register(DeviceIdRegistry, device_id, nil)
-    Horde.Registry.register(EIdRegistry, eid, device_id)
-  end
-  
+  # Returns the via tuple for GenServer name registration for a user
+  def via_monitor_registry(user_id), do: {:via, Horde.Registry, {UserRegistry, user_id}}
 end

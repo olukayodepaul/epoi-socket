@@ -108,3 +108,8 @@ iex> Horde.Registry.lookup(DeviceIdRegistry, "abc12s33")
 [{#PID<0.320.0>, nil}]   # => the GenServer for this device is running
 []                       # => the GenServer is terminated or not registered
 ```
+
+Horde.Registry.lookup(EIdRegistry, "paul@domain.com")
+
+[{#PID<0.319.0>, "abc1232"}]
+[{#PID<0.319.0>, "abc1232"}]

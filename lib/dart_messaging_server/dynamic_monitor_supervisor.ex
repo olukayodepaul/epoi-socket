@@ -24,7 +24,7 @@ defmodule DartMessagingServer.MonitorDynamicSupervisor do
 
     case Horde.DynamicSupervisor.start_child(__MODULE__, child_spec) do
       {:ok, pid} ->
-        Logger.info("Mother process started for user_id=#{inspect(user_id)}, pid=#{inspect(pid)}")
+        Logger.warning("Mother process started for user_id=#{inspect(user_id)}, pid=#{inspect(pid)}")
         {:ok, pid}
 
       {:error, {:already_started, pid}} ->

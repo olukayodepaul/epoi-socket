@@ -1,3 +1,4 @@
+
 defmodule DartMessagingServer.Application do
   use Application
   alias ApplicationServer.Configuration
@@ -28,11 +29,10 @@ defmodule DartMessagingServer.Application do
 
     children = [
       cowboy_spec,
+      {Horde.Registry,name: DeviceIdRegistry, keys: :unique, members: :auto},
+      {Horde.Registry, name: UserRegistry, keys: :unique, members: :auto},
       {DartMessagingServer.DynamicSupervisor, []},
       {DartMessagingServer.MonitorDynamicSupervisor, []},
-      {Horde.Registry,name: DeviceIdRegistry, keys: :unique, members: :auto},
-      {Horde.Registry, name: EIdRegistry, keys: :unique, members: :auto},
-      {Horde.Registry, name: UserRegistry, keys: :unique, members: :auto},
       {Redix, name: :redix},
     ]
     
