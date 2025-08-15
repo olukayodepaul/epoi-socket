@@ -41,7 +41,10 @@ defmodule DartMessagingServer.Socket do
   end
 
   def terminate(reason, _req, state) do
+    IO.inspect("GenServer Terminated Pass 1")
+    IO.inspect(state)
     TerminateHandler.handle_terminate(reason, state)
+    :ok
   end
 
 end

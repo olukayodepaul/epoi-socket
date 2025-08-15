@@ -15,9 +15,11 @@ defmodule Application.Monitor do
     {:ok, %{user_id: user_id, devices: %{}}}
   end
 
-  def handle_cast({:stop_monitor, %{device_id: device_id, eid: eid, ws_pid: _ws_pid}}, state) do
-    IO.inspect("Reaching the parent information from child #{device_id} #{eid}")
-    {:noreply, state}
+  def handle_cast({:stop_monitor, %{user_id: user_id}}, state) do
+    #How to terminate the mother. check if any child is existing on tye mother cadel
+    IO.inspect("GenServer Terminated Pass 6")
+    IO.inspect("Reaching the parent information from child #{user_id} #{user_id}")
+    {:stop, :normal, state}
   end
 
 end

@@ -8,10 +8,10 @@ defmodule Util.PingPongHelper do
 
   @max_missed_pongs Configuration.max_missed_pongs()
 
-  def handle_ping(%{missed_pongs: missed, user_id: user_id, eid: eid, device_id: device_id, ws_pid: ws_pid} = state) do
+  def handle_ping(%{missed_pongs: missed, user_id: user_id, eid: _eid, device_id: device_id, ws_pid: ws_pid} = state) do
     if missed >= @max_missed_pongs do
       Logger.warning("Missed pong limit reached for #{device_id}, closing connection gracefully")
-      StartSupervisorMonitor.terminate_monitor(user_id, device_id, eid, ws_pid)
+      StartSupervisorMonitor.terminate_monitor(%{user_id: user_id})
       {:stop, :normal, state}
     else
       Logger.debug("Sending ping to #{device_id}, missed=#{missed}")
@@ -40,6 +40,5 @@ defmodule Util.PingPongHelper do
     PingPong.handle_pong_registry(device_id)
     {:ok, state}
   end
-
 
 end

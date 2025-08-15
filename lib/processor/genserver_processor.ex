@@ -29,8 +29,9 @@ defmodule Application.Processor do
     {:noreply, state}
   end
 
-  def handle_cast({:stop_genserver_session, %{user_id: user_id, device_id: device_id, eid: eid, ws_pid: ws_pid}} = state) do
-    StartSupervisorMonitor.terminate_monitor(user_id, device_id, eid, ws_pid)
+  def handle_cast(:stop_genserver_session , %{user_id: user_id} = state) do
+    IO.inspect("GenServer Terminated Pass 4")
+    StartSupervisorMonitor.terminate_monitor(%{user_id: user_id})
     {:stop, :normal, state}
   end
 

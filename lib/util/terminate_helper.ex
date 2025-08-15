@@ -5,15 +5,17 @@ defmodule Util.TerminateHandler do
   @doc """
   Handles cleanup and logging when a WebSocket terminates.
   """
-  def handle_terminate(reason, %{missed_pongs: _missed, user_id: user_id, eid: eid, device_id: device_id, ws_pid: ws_pid}) do
+  def handle_terminate(reason, {:new, {_user_id, _eid, device_id}}) do
+    IO.inspect("GenServer Terminated Pass 2")
     Logger.info("WebSocket terminated for #{device_id}, reason: #{inspect(reason)}")
-    StartSupervisorMonitor.terminate_device(user_id, device_id, eid, ws_pid)
+    StartSupervisorMonitor.terminate_device(%{device_id: device_id})
     Logger.warning("No Application.Processor found for #{device_id} during websocket terminate")
     log_reason(reason, device_id)
     :ok
   end
 
   def handle_terminate(reason, state) do
+    IO.inspect("GenServer Terminated Pass 2B")
     Logger.info("WebSocket terminated with reason: #{inspect(reason)}")
     log_reason(reason, extract_registry_id(state))
     :ok
