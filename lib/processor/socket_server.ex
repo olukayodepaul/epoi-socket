@@ -2,13 +2,17 @@ defmodule DartMessagingServer.Socket do
   @behaviour :cowboy_websocket
   require Logger
 
-  alias Util.{
-    PingPongHelper, 
-    TerminateHandler, 
-    ConnectionsHelper, 
-    TokenRevoked
-  }
+  # alias Util.{
+  #   PingPongHelper, 
+  #   TerminateHandler, 
+  #   ConnectionsHelper, 
+  #   TokenRevoked
+  # }
+  
   alias Security.TokenVerifier
+  alias Util.ConnectionsHelper
+  alias Util.TokenRevoked
+  alias Util.PingPongHelper
 
   def init(req, _state) do
     case TokenVerifier.extract_token(:cowboy_req.header("token", req)) do
@@ -26,8 +30,9 @@ defmodule DartMessagingServer.Socket do
     end
   end
 
-  def websocket_init(state = {:new,{user_id, eid, device_id}}) do
-    DartMessagingServer.DynamicSupervisor.start_session({user_id, eid, device_id, self()})
+  def websocket_init(state = {:new,{eid, device_id}}) do
+    DartMessagingServer.MonitorDynamicSupervisor.start_mother(eid)
+    Application.Monitor.start_device(eid, {eid, device_id, self()})
     {:ok, state}
   end
 
@@ -36,15 +41,14 @@ defmodule DartMessagingServer.Socket do
     {:reply, :ping, state}
   end
 
-  def websocket_handle(:pong, {:new,{_user_id, _eid, device_id}} = state) do
+  def websocket_handle(:pong, {:new,{_eid, device_id}} = state) do
     PingPongHelper.handle_pong(device_id, state)
   end
 
   def terminate(reason, _req, state) do
     IO.inspect("GenServer Terminated Pass 1")
     IO.inspect(state)
-    TerminateHandler.handle_terminate(reason, state)
-    :ok
+    Registries.TerminateHandler.handle_terminate(reason, state)
   end
 
 end

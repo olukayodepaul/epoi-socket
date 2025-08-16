@@ -1,14 +1,18 @@
-defmodule Util.TerminateHandler do
+defmodule Registries.TerminateHandler do
   require Logger
-  alias Registries.StartSupervisorMonitor
 
   @doc """
   Handles cleanup and logging when a WebSocket terminates.
   """
-  def handle_terminate(reason, {:new, {_user_id, _eid, device_id}}) do
-    IO.inspect("GenServer Terminated Pass 2")
-    Logger.info("WebSocket terminated for #{device_id}, reason: #{inspect(reason)}")
-    StartSupervisorMonitor.terminate_device(%{device_id: device_id})
+  def handle_terminate(reason, {:new,{eid, device_id}}) do
+    IO.inspect("GenServer Terminated Pass 22 #{device_id} #{eid}")
+    # Logger.info("WebSocket terminated for #{device_id}, reason: #{inspect(reason)}")
+    case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
+      [{pid, _}] ->
+        GenServer.cast(pid, :terminate_device)
+      [] ->
+        Logger.warning("No registry entry for #{device_id}, cannot maybe_start_mother")
+    end
     Logger.warning("No Application.Processor found for #{device_id} during websocket terminate")
     log_reason(reason, device_id)
     :ok

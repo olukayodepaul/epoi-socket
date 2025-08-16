@@ -1,6 +1,10 @@
 defmodule DartMessagingServer.DynamicSupervisor do
-  use DynamicSupervisor
+  use Horde.DynamicSupervisor
   require Logger
+
+  @moduledoc """
+  Dynamic supervisor for all device session children.
+  """
 
   def start_link(_args) do
     Horde.DynamicSupervisor.start_link(__MODULE__, :ok, name: __MODULE__)
@@ -10,8 +14,8 @@ defmodule DartMessagingServer.DynamicSupervisor do
     Horde.DynamicSupervisor.init(strategy: :one_for_one)
   end
 
-  @spec start_session({any, any, any , pid}) :: {:ok, pid} | {:error, any}
-  def start_session({_user_id, eid, device_id, _ws_pid} = state) do
+  @spec start_session({ any(), any(), pid()}) :: {:ok, pid()} | {:error, any()}
+  def start_session({eid, device_id, _ws_pid} = state) do
     child_spec = %{
       id: {:connection_session, device_id},
       start: {Application.Processor, :start_link, [state]},
@@ -21,16 +25,27 @@ defmodule DartMessagingServer.DynamicSupervisor do
 
     case Horde.DynamicSupervisor.start_child(__MODULE__, child_spec) do
       {:ok, pid} ->
-        Logger.info("Session started successfully for eid=#{inspect(eid)}, device_id=#{inspect(device_id)}, pid=#{inspect(pid)}")
+        Logger.info("Session started for eid=#{eid}, device_id=#{device_id}, pid=#{inspect(pid)}")
         {:ok, pid}
 
       {:error, {:already_started, pid}} ->
-        Logger.warning("Session already started for device_id=#{inspect(device_id)}, pid=#{inspect(pid)}")
+        Logger.warning("Session already exists for device_id=#{device_id}, pid=#{inspect(pid)}")
         {:ok, pid}
 
       {:error, reason} ->
-        Logger.error("Failed to start session for device_id=#{inspect(device_id)}. Reason: #{inspect(reason)}")
+        Logger.error("Failed to start session for device_id=#{device_id}, reason=#{inspect(reason)}")
         {:error, reason}
     end
   end
 end
+
+
+# # Start Mother (once per user)
+# {:ok, mother_pid} = DartMessagingServer.MonitorDynamicSupervisor.start_mother(user_id)
+
+# # Start device session under Mother
+# {:ok, session_pid} =
+#   Application.Monitor.start_device(user_id, {user_id, eid, device_id, ws_pid})
+
+# # Stop a device session
+# Application.Monitor.stop_device(user_id, device_id)

@@ -113,3 +113,8 @@ Horde.Registry.lookup(EIdRegistry, "paul@domain.com")
 
 [{#PID<0.319.0>, "abc1232"}]
 [{#PID<0.319.0>, "abc1232"}]
+
+Horde.Registry.lookup(DeviceIdRegistry, "aaaaa")
+Horde.Registry.lookup(DeviceIdRegistry, "bbbbb")
+Horde.Registry.lookup(DeviceIdRegistry, "ccccc")
+Horde.Registry.lookup(UserRegistry, "paul@domain.com")

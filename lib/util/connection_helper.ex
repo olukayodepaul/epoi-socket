@@ -1,6 +1,7 @@
 defmodule Util.ConnectionsHelper do
 
   require Logger
+  alias ApplicationServer.Configuration
 
   def reject(req, reason) do
     res = :cowboy_req.reply(401, response_header(req, 400, "dis_connected", reason), <<>>, req)
@@ -8,8 +9,8 @@ defmodule Util.ConnectionsHelper do
   end
 
   def accept(req, claims) do
-    opts = %{idle_timeout: 60_000}
-    state = {:new,{claims["user_id"], claims["eid"], claims["device_id"]}}
+    opts = %{idle_timeout: Configuration.idle_timeout()}
+    state = {:new,{claims["eid"], claims["device_id"]}}
     {:cowboy_websocket, :cowboy_req.set_resp_headers(response_header(req, 101, "connected", "Successful"), req) , state ,opts}
   end
 
