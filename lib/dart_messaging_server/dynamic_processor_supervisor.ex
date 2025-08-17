@@ -38,14 +38,3 @@ defmodule DartMessagingServer.DynamicSupervisor do
     end
   end
 end
-
-
-# # Start Mother (once per user)
-# {:ok, mother_pid} = DartMessagingServer.MonitorDynamicSupervisor.start_mother(user_id)
-
-# # Start device session under Mother
-# {:ok, session_pid} =
-#   Application.Monitor.start_device(user_id, {user_id, eid, device_id, ws_pid})
-
-# # Stop a device session
-# Application.Monitor.stop_device(user_id, device_id)

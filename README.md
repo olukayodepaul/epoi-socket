@@ -118,3 +118,53 @@ Horde.Registry.lookup(DeviceIdRegistry, "aaaaa")
 Horde.Registry.lookup(DeviceIdRegistry, "bbbbb")
 Horde.Registry.lookup(DeviceIdRegistry, "ccccc")
 Horde.Registry.lookup(UserRegistry, "paul@domain.com")
+
+## creating postgre table
+
+```
+CREATE TABLE devices (
+    id SERIAL PRIMARY KEY,                 -- auto-increment id
+    device_id VARCHAR UNIQUE NOT NULL,     -- unique device identifier
+    eid VARCHAR NOT NULL,
+    last_seen TIMESTAMP,
+    status VARCHAR,
+    last_received_version INTEGER,
+    ip_address VARCHAR,
+    app_version VARCHAR,
+    os VARCHAR,
+    last_activity TIMESTAMP,
+    supports_notifications BOOLEAN DEFAULT FALSE,
+    supports_media BOOLEAN DEFAULT FALSE,
+    inserted_at TIMESTAMP DEFAULT now()
+);
+
+-- Index for querying by user_id
+CREATE INDEX devices_eid_index ON devices(eid);
+```
+
+## insert into postgrsql table
+
+```
+now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+device = %App.Devices.Device{
+  device_id: "device_123",
+  user_id: "user_001",
+  last_seen: now,
+  status: "online",
+  last_received_version: 1,
+  ip_address: "192.168.1.10",
+  app_version: "1.0.0",
+  os: "iOS",
+  last_activity: now,
+  supports_notifications: true,
+  supports_media: true
+}
+
+# Use the unified storage helper
+App.Storage.save(device)
+
+
+App.Storage.get("device_123")
+App.Storage.all_by_user("user_001")
+```

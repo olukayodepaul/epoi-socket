@@ -18,7 +18,6 @@ defmodule DartMessagingServer.MonitorDynamicSupervisor do
   def start_mother(eid) do
     case Horde.Registry.lookup(UserRegistry, eid) do
       [{pid, _value}] ->
-        #can we create the child here where the mother is already
         Logger.info("Mother already running for eid=#{eid}, pid=#{inspect(pid)}")
         {:ok, pid}
 

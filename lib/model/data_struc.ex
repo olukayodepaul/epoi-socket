@@ -1,4 +1,26 @@
 # defmodule Data.DeviceInfo do
+#   defstruct [
+#       :device_id,               # Unique device identifier
+#       :user_id,                 # Unique for all the users
+#       :last_seen,               # Last timestamp the device was active
+#       :status,                  # Device/user status (:online, :offline, :busy, etc.)
+#       :last_received_version,   # Last version of messages/status updates received
+#       :ip_address,              # Last known IP address of the device
+#       :app_version,             # Version of the app installed on this device
+#       :os,                      # Operating system of the device (iOS, Android, etc.)
+#       :last_activity,           # Timestamp of last user action
+#       :supports_notifications,  # Boolean: can device receive push notifications
+#       :supports_media           # Boolean: can device send/receive media files
+#     ]
+# end
+
+
+
+
+
+
+
+# defmodule Data.DeviceInfo do
 #   @moduledoc """
 #   Tracks a single device of a user (simplified)
 #   """
@@ -87,4 +109,3 @@
 #     %{device_info | status: :offline, last_seen: :os.system_time(:millisecond)}
 #   end
 # end
-

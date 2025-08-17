@@ -34,6 +34,14 @@ defmodule DartMessagingServer.Application do
       {Horde.Registry,name: DeviceIdRegistry, keys: :unique, members: :auto},
       {Horde.Registry, name: UserRegistry, keys: :unique, members: :auto},
       {Redix, name: :redix},
+      {Phoenix.PubSub, name: DartMessagingServer.PubSub},
+      DartMessagingServer.Presence,
+      Application.Monitor,
+      case Configuration.selected_db() do
+        :postgres -> App.PgRepo
+        # :mysql -> App.MySQLRepo
+        :mongo -> {Mongo, Application.get_env(:dart_messaging_server, :mongo)}
+      end
     ]
     
     opts = [strategy: :one_for_one, name: DartMessagingServer.Supervisor]

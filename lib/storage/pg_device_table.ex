@@ -1,0 +1,39 @@
+defmodule App.Devices.Device do
+  use Ecto.Schema
+  import Ecto.Changeset
+
+  @primary_key {:id, :id, autogenerate: true}   # SERIAL primary key
+  @derive {Jason.Encoder, only: [
+    :id, :device_id, :eid, :last_seen, :status,
+    :last_received_version, :ip_address, :app_version,
+    :os, :last_activity, :supports_notifications,
+    :supports_media, :inserted_at
+  ]}
+  schema "devices" do
+    field :device_id, :string        # unique but not primary key
+    field :eid, :string
+    field :last_seen, :utc_datetime
+    field :status, :string
+    field :last_received_version, :integer
+    field :ip_address, :string
+    field :app_version, :string
+    field :os, :string
+    field :last_activity, :utc_datetime
+    field :supports_notifications, :boolean, default: false
+    field :supports_media, :boolean, default: false
+    field :inserted_at, :utc_datetime
+  end
+
+  # ✅ Changeset function
+  def changeset(device, attrs) do
+    device
+    |> cast(attrs, [
+      :device_id, :eid, :last_seen, :status,
+      :last_received_version, :ip_address, :app_version,
+      :os, :last_activity, :supports_notifications,
+      :supports_media, :inserted_at
+    ])
+    |> validate_required([:device_id, :eid])
+    |> unique_constraint(:device_id)  # enforce uniqueness at DB level
+  end
+end

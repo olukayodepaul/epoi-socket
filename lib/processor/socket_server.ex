@@ -1,18 +1,9 @@
 defmodule DartMessagingServer.Socket do
   @behaviour :cowboy_websocket
   require Logger
-
-  # alias Util.{
-  #   PingPongHelper, 
-  #   TerminateHandler, 
-  #   ConnectionsHelper, 
-  #   TokenRevoked
-  # }
   
   alias Security.TokenVerifier
-  alias Util.ConnectionsHelper
-  alias Util.TokenRevoked
-  alias Util.PingPongHelper
+  alias Util.{ConnectionsHelper, TokenRevoked, PingPongHelper}
 
   def init(req, _state) do
     case TokenVerifier.extract_token(:cowboy_req.header("token", req)) do
@@ -46,8 +37,6 @@ defmodule DartMessagingServer.Socket do
   end
 
   def terminate(reason, _req, state) do
-    IO.inspect("GenServer Terminated Pass 1")
-    IO.inspect(state)
     Registries.TerminateHandler.handle_terminate(reason, state)
   end
 

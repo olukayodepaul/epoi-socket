@@ -38,7 +38,11 @@ defmodule DartMessagingServer.MixProject do
       #elixir project
       {:redix, ">= 1.5.0"},
       {:phoenix, "~> 1.7"},
-      {:horde, "~> 0.8"}
+      {:horde, "~> 0.8"},
+
+      {:ecto_sql, "~> 3.11"},
+      {:postgrex, ">= 0.0.0"},
+      {:mongodb_driver, "~> 1.0"},
     ]
   end
 end
