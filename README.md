@@ -168,3 +168,5 @@ App.Storage.save(device)
 App.Storage.get("device_123")
 App.Storage.all_by_user("user_001")
 ```
+
+## genarate protobuf

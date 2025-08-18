@@ -29,6 +29,68 @@ defmodule App.Devices.Cache do
       [] -> nil
     end
   end
+
+  def update_last_seen(device_id) do
+    case :ets.lookup(@table, device_id) do
+      [{^device_id, device}] ->
+        now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+        updated_device = %Device{
+          device | last_seen: now
+        }
+
+        # Save to storage (database or file)
+        Storage.save(updated_device)
+
+        # Update in ETS
+        :ets.insert(@table, {device.device_id, updated_device})
+
+        {:ok}
+        
+      [] ->
+        {:error}
+    end
+  end
+
+  def update_last_received_version(device_id, last_received_version) do
+    case :ets.lookup(@table, device_id) do
+      [{^device_id, device}] ->
+        updated_device = %Device{
+          device | last_received_version: last_received_version
+        }
+
+        # Save to storage
+        Storage.save(updated_device)
+
+        # Update in ETS
+        :ets.insert(@table, {device.device_id, updated_device})
+
+        {:ok}
+
+      [] ->
+        {:error}
+    end
+  end
+
+  def update_status(device_id, status) do
+    case :ets.lookup(@table, device_id) do
+      [{^device_id, device}] ->
+        updated_device = %Device{
+          device | status: status
+        }
+
+        # Save to storage
+        Storage.save(updated_device)
+
+        # Update in ETS
+        :ets.insert(@table, {device.device_id, updated_device})
+
+        {:ok}
+
+      [] ->
+        {:error}
+    end
+  end
   
   def fetch(device_id) do
     case Storage.get(device_id) do
@@ -67,8 +129,11 @@ defmodule App.Devices.Cache do
     |> Enum.filter(fn device -> device.eid == eid end)
   end
 
-
 end
 
 #App.Devices.Cache.all_by_user("paul@domain.com")
 #App.Devices.Cache.get("aaaaa")
+#App.Devices.Cache.update_last_received_version("aaaaa", 50)
+#App.Devices.Cache.update_status("aaaaa", "offline")
+#App.Devices.Cache.update_last_seen("aaaaa")
+ 

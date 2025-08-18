@@ -11,7 +11,8 @@ config :dart_messaging_server, :server,
   ping_interval: 30_000,
   max_missed_pongs: 3,
   idle_timeout: 60_000,
-  selected_db: :postgres #redis #mysql #mongodb
+  selected_db: :postgres, #redis #mysql #mongodb
+  presence_topic: "presence:status"
 
 config :dart_messaging_server,
   ecto_repos: [App.PgRepo]

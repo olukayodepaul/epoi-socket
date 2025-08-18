@@ -4,7 +4,6 @@ defmodule Application.Monitor do
   alias DartMessagingServer.DynamicSupervisor
   alias Util.RegistryHelper
   alias App.Devices.Cache
-  alias DartMessagingServer.Presence
 
   @moduledoc """
   Mother process for a user. Holds state for devices, messages, etc.
@@ -66,6 +65,7 @@ defmodule Application.Monitor do
   @impl true
   def handle_cast({:terminate_child_process, {eid, device_id}}, state) do
   #check terminate and ping pong if both are working
+  # close Mother if all the children are not avalaible.
     Cache.delete_only_ets(device_id)
     case Cache.all_by_user(eid) do
       [] ->
@@ -74,8 +74,5 @@ defmodule Application.Monitor do
         {:noreply, state}
     end
   end
-
-
-
 
 end

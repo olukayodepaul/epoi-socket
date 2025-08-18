@@ -1,5 +1,5 @@
-defmodule DartMessagingServer.Presence do
+defmodule ApplicationServer.Presence do
   use Phoenix.Presence,
-    otp_app: :dart_messaging_server,
-    pubsub_server: DartMessagingServer.PubSub
+    otp_app: :application_server,
+    pubsub_server: ApplicationServer.PubSub
 end

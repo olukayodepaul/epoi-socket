@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dartmessaging;
+
+// Possible states of a message during its lifecycle
+enum MessageStatus {
+  PENDING   = 0;  // Message is created but not sent yet
+  SENT      = 1;  // Message was sent from the client
+  DELIVERED = 2;  // Message reached recipient’s device/server
+  READ      = 3;  // Message was opened/read by the recipient
+  FAILED    = 4;  // Failed to deliver
+}
+
+// Core message exchanged between clients
+message DartMessage {
+  string id = 1;               // Unique message ID
+  string from_eid = 2;         // Sender's entity ID
+  string from_device_id = 3;   // Sender’s device ID
+  string to_eid = 4;           // Recipient’s entity ID
+  string to_device_id = 5;     // Recipient’s device ID (optional for multi-device)
+  string body = 6;             // Actual message body (text)
+  MessageStatus status = 7;    // Status of the message
+  uint64 last_received = 8;    // Last time recipient acknowledged receipt
+  int64 timestamp = 9;         // Message creation timestamp
+}
+
+// A user's contacts + online metadata
+message UserContactList {
+  string eid = 1;                  // Unique user identifier (the owner of this list)
+  string device_id = 2;            // Device ID reporting this state
+  repeated string friends = 3;     // List of friend EIDs
+  bool online = 4;                 // Online status of the user
+  uint64 last_seen = 5;            // Unix timestamp of last seen
+}
+

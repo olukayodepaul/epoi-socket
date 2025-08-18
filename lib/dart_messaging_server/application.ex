@@ -34,9 +34,10 @@ defmodule DartMessagingServer.Application do
       {Horde.Registry,name: DeviceIdRegistry, keys: :unique, members: :auto},
       {Horde.Registry, name: UserRegistry, keys: :unique, members: :auto},
       {Redix, name: :redix},
-      {Phoenix.PubSub, name: DartMessagingServer.PubSub},
-      DartMessagingServer.Presence,
-      Application.Monitor,
+      # Start PubSub
+      {Phoenix.PubSub, name: ApplicationServer.PubSub},
+      # Start Presence
+      ApplicationServer.Presence,
       case Configuration.selected_db() do
         :postgres -> App.PgRepo
         # :mysql -> App.MySQLRepo
