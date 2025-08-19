@@ -17,15 +17,16 @@ defmodule App.Subscriber.Cache do
   end
 
   # Insert a subscriber into ETS and persist asynchronously
-  def save(%Schema{} = subscriber) do
-    :ets.insert(@subscriber_table, {subscriber.owner_eid <> ":" <> subscriber.subscriber_eid, subscriber})
+  def save(%Subscriber{} = subscriber) do
+    key = "#{subscriber.owner_eid}:#{subscriber.subscriber_eid}"
+    :ets.insert(@subscriber_table, {key, subscriber})
     Task.start(fn -> Delegator.save_subscriber(subscriber) end)
     :ok
   end
 
   # Fetch subscriber from ETS, fallback to DB if missing
   def fetch(owner_eid, subscriber_eid) do
-    key = owner_eid <> ":" <> subscriber_eid
+    key = "#{owner_eid}:#{subscriber_eid}"
 
     case :ets.lookup(@subscriber_table, key) do
       [{^key, subscriber}] ->
@@ -43,22 +44,24 @@ defmodule App.Subscriber.Cache do
 
   # Get subscriber from ETS only
   def get(owner_eid, subscriber_eid) do
-    key = owner_eid <> ":" <> subscriber_eid
+    key = "#{owner_eid}:#{subscriber_eid}"
+
     case :ets.lookup(@subscriber_table, key) do
       [{^key, subscriber}] -> subscriber
       [] -> nil
     end
   end
 
-  # Delete subscriber
+  # Delete subscriber from ETS and DB
   def delete(owner_eid, subscriber_eid) do
-    key = owner_eid <> ":" <> subscriber_eid
+    key = "#{owner_eid}:#{subscriber_eid}"
     :ets.delete(@subscriber_table, key)
     Delegator.delete_subscriber(subscriber_eid)
   end
 
+  # Delete subscriber only from ETS
   def delete_only_ets(owner_eid, subscriber_eid) do
-    key = owner_eid <> ":" <> subscriber_eid
+    key = "#{owner_eid}:#{subscriber_eid}"
     :ets.delete(@subscriber_table, key)
   end
 
@@ -81,7 +84,7 @@ defmodule App.Subscriber.Cache do
   end
 
   defp update_subscriber_field(owner_eid, subscriber_eid, field, value) do
-    key = owner_eid <> ":" <> subscriber_eid
+    key = "#{owner_eid}:#{subscriber_eid}"
 
     case :ets.lookup(@subscriber_table, key) do
       [{^key, subscriber}] ->
@@ -95,11 +98,10 @@ defmodule App.Subscriber.Cache do
     end
   end
 
+  # Fetch all subscribers for owner from DB and cache in ETS
   def fetch_and_cache_by_owner(owner_eid) do
-    # Fetch all subscribers for the owner from DB via Delegator
     subscribers = Delegator.get_all_subscribers_by_owner(owner_eid)
 
-    # Insert each subscriber into ETS
     Enum.each(subscribers, fn subscriber ->
       key = "#{subscriber.owner_eid}:#{subscriber.subscriber_eid}"
       :ets.insert(@subscriber_table, {key, subscriber})
@@ -107,5 +109,4 @@ defmodule App.Subscriber.Cache do
 
     {:ok, subscribers}
   end
-
 end

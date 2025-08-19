@@ -1,93 +1,117 @@
-defmodule App.Subscriber.Cache do
+defmodule App.Device.Cache do
   @moduledoc """
-  ETS-based cache for subscribers. Also syncs to the configured DB via App.Delegator.
+  ETS-based cache for devices. Also syncs to the configured DB via App.Delegator.
   """
 
-  alias App.PG.Subscriber
+  alias App.PG.Devices
   alias App.Storage.Delegator
 
-  @subscriber_table :subscriber_cache
+  @device_table :device_cache
 
   # Create ETS table on app start
   def init do
-    if :ets.whereis(@subscriber_table) == :undefined do
-      :ets.new(@subscriber_table, [:set, :public, :named_table, read_concurrency: true])
+    if :ets.whereis(@device_table) == :undefined do
+      :ets.new(@device_table, [:set, :public, :named_table, read_concurrency: true])
     end
+
     :ok
   end
 
-  # Insert a subscriber into ETS and persist asynchronously
-  def save(%Subscriber{} = subscriber) do
-    :ets.insert(@subscriber_table, {ets_key(subscriber), subscriber})
-    Task.start(fn -> Delegator.save_subscriber(subscriber) end)
+  # Insert a device into ETS and persist asynchronously
+  def save(%Devices{} = device) do
+    key = ets_key(device)
+    :ets.insert(@device_table, {key, device})
+    Task.start(fn -> Delegator.save_device(device) end)
     :ok
   end
 
-  # Fetch subscriber from ETS, fallback to DB if missing
-  def fetch(owner_eid, subscriber_eid) do
-    key = ets_key(owner_eid, subscriber_eid)
+  # Fetch device from ETS, fallback to DB if missing
+  def fetch(device_id) do
+    # Scan ETS for the device
+    case :ets.tab2list(@device_table)
+        |> Enum.find(fn {_key, device} -> device.device_id == device_id end) do
+      nil ->
+        # Not found in ETS, fallback to DB
+        case Delegator.get_device(device_id) do
+          nil ->
+            {:error}
 
-    case :ets.lookup(@subscriber_table, key) do
-      [{^key, subscriber}] ->
-        {:ok, subscriber}
+          device ->
+            # Insert into ETS using standard key
+            key = "#{device.eid}:#{device.device_id}"
+            :ets.insert(@device_table, {key, device})
+            {:ok}
+        end
 
+      {key, device} ->
+        {:ok}
+    end
+  end
+
+
+  # Fetch by device_id only
+  def fetch(device_id) do
+    case :ets.match_object(@device_table, {:"$1", %{device_id: device_id}}) do
+      [{key, device}] -> {:ok, device}
       [] ->
-        case Delegator.get_subscriber(subscriber_eid) do
+        case Delegator.get_device(device_id) do
           nil -> {:error, :not_found}
-          subscriber ->
-            :ets.insert(@subscriber_table, {key, subscriber})
-            {:ok, subscriber}
+          device ->
+            key = ets_key(device)
+            :ets.insert(@device_table, {key, device})
+            {:ok, device}
         end
     end
   end
 
-  # Get subscriber from ETS only
-  def get(owner_eid, subscriber_eid) do
-    key = ets_key(owner_eid, subscriber_eid)
-
-    case :ets.lookup(@subscriber_table, key) do
-      [{^key, subscriber}] -> subscriber
+  # Get device from ETS only
+  def get(eid, device_id) do
+    key = ets_key(eid, device_id)
+    case :ets.lookup(@device_table, key) do
+      [{^key, device}] -> device
       [] -> nil
     end
   end
 
-  # Delete subscriber
-  def delete(owner_eid, subscriber_eid) do
-    key = ets_key(owner_eid, subscriber_eid)
-    :ets.delete(@subscriber_table, key)
-    Delegator.delete_subscriber(subscriber_eid)
+  # Delete device
+  def delete(eid, device_id) do
+    key = ets_key(eid, device_id)
+    :ets.delete(@device_table, key)
+    Delegator.delete_device(device_id)
   end
 
-  def delete_only_ets(owner_eid, subscriber_eid) do
-    :ets.delete(@subscriber_table, ets_key(owner_eid, subscriber_eid))
+  # Delete only from ETS
+  def delete_only_ets(eid, device_id) do
+    key = ets_key(eid, device_id)
+    :ets.delete(@device_table, key)
   end
 
-  # List all subscribers in ETS
+  # List all devices in ETS
   def all do
-    :ets.tab2list(@subscriber_table)
-    |> Enum.map(fn {_key, subscriber} -> subscriber end)
+    :ets.tab2list(@device_table)
+    |> Enum.map(fn {_key, device} -> device end)
   end
 
-  # List subscribers by owner
-  def all_by_owner(owner_eid) do
+  # List devices by owner (eid)
+  def all_by_owner(eid) do
     all()
-    |> Enum.filter(&(&1.owner_eid == owner_eid))
+    |> Enum.filter(&(&1.eid == eid))
   end
 
-  # Update subscriber status
-  def update_status(owner_eid, subscriber_eid, status) do
-    update_subscriber_field(owner_eid, subscriber_eid, :status, status)
+  # Update device status
+  def update_status(eid, device_id, status) do
+    update_device_field(eid, device_id, :status, status)
   end
 
   # Generic update for any field
-  defp update_subscriber_field(owner_eid, subscriber_eid, field, value) do
-    key = ets_key(owner_eid, subscriber_eid)
+  defp update_device_field(eid, device_id, field, value) do
+    key = ets_key(eid, device_id)
 
-    case :ets.lookup(@subscriber_table, key) do
-      [{^key, subscriber}] ->
-        updated = Map.put(subscriber, field, value)
-        Delegator.save_subscriber(updated)
-        :ets.insert(@subscriber_table, {key, updated})
+    case :ets.lookup(@device_table, key) do
+      [{^key, device}] ->
+        updated = Map.put(device, field, value)
+        Delegator.save_device(updated)
+        :ets.insert(@device_table, {key, updated})
         {:ok, updated}
 
       [] ->
@@ -95,7 +119,19 @@ defmodule App.Subscriber.Cache do
     end
   end
 
+  # Bulk fetch devices for an owner and cache in ETS
+  def fetch_and_cache_by_owner(eid) do
+    devices = Delegator.get_all_devices_by_owner(eid)
+
+    Enum.each(devices, fn device ->
+      key = ets_key(device)
+      :ets.insert(@device_table, {key, device})
+    end)
+
+    {:ok, devices}
+  end
+
   # Helper to build ETS key
-  defp ets_key(%Subscriber{owner_eid: owner, subscriber_eid: sub}), do: "#{owner}:#{sub}"
-  defp ets_key(owner_eid, subscriber_eid), do: "#{owner_eid}:#{subscriber_eid}"
+  defp ets_key(%Devices{eid: eid, device_id: device_id}), do: "#{eid}:#{device_id}"
+  defp ets_key(eid, device_id), do: "#{eid}:#{device_id}"
 end

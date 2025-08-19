@@ -3,9 +3,9 @@ defmodule Application.Monitor do
   require Logger
   alias DartMessagingServer.DynamicSupervisor
   alias Util.RegistryHelper
-  alias App.Devices.Cache
+  alias App.Device.Cache
+  alias App.PG.Devices
 
- 
 
   @moduledoc """
   Mother process for a user. Holds state for devices, messages, etc.
@@ -19,8 +19,6 @@ defmodule Application.Monitor do
   @impl true
   def init(eid) do
     Logger.info("Monitor init for eid=#{eid}")
-
-    
     Cache.init()
     {:ok, %{eid: eid, devices: %{}}}
   end
@@ -48,7 +46,7 @@ defmodule Application.Monitor do
       {:ok} -> :ok
       {:error} -> 
         now = DateTime.utc_now() |> DateTime.truncate(:second)
-        device = %App.Devices.Device{
+        device = %Devices{
           device_id: device_id,
           eid: eid,
           last_seen: now,

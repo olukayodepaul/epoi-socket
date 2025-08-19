@@ -8,16 +8,17 @@ defmodule App.Storage.Postgres.Device do
   # save with upsert on device_id
   def save(%Devices{} = device) do
     device
-    |> Device.changeset(%{})   # wrap in changeset (you can adjust attrs if needed)
+    |> Devices.changeset(%{})  # use the correct module
     |> Repo.insert(
-        on_conflict: {:replace_all_except, [:id]}, # keep :id
+        on_conflict: {:replace_all_except, [:id]},  # keep :id
         conflict_target: :device_id
       )
     |> case do
-      {:ok, _} -> :ok
-      {:error, reason} -> {:error, reason}
-    end
+        {:ok, _} -> :ok
+        {:error, reason} -> {:error, reason}
+      end
   end
+
 
   # get by device_id (NOT primary key)
   def get(device_id) do

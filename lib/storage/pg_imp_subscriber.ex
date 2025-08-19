@@ -1,4 +1,5 @@
 defmodule App.Storage.Postgres.Subscriber do
+  
   @behaviour App.StorageIntf
   alias App.PG.Subscriber
   alias App.PgRepo, as: Repo
