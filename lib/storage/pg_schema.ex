@@ -1,4 +1,4 @@
-defmodule App.Devices.Device do
+defmodule App.PG.Devices do
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -37,3 +37,30 @@ defmodule App.Devices.Device do
     |> unique_constraint(:device_id)  # enforce uniqueness at DB level
   end
 end
+
+
+defmodule App.PG.Subscriber do
+  use Ecto.Schema
+  import Ecto.Changeset
+
+  @primary_key {:id, :id, autogenerate: true}   # BIGSERIAL primary key
+  @derive {Jason.Encoder, only: [
+    :id, :owner_eid, :subscriber_eid, :status, :inserted_at
+  ]}
+  schema "subscriber" do
+    field :owner_eid, :string
+    field :subscriber_eid, :string
+    field :status, :string
+    field :inserted_at, :naive_datetime
+  end
+
+  # ✅ Changeset function
+  def changeset(subscriber, attrs) do
+    subscriber
+    |> cast(attrs, [:owner_eid, :subscriber_eid, :status, :inserted_at])
+    |> validate_required([:owner_eid, :subscriber_eid, :status])
+    |> validate_inclusion(:status, ["ONLINE", "BUSY", "DO_NOT_DISTURB", "OFFLINE"])
+    |> unique_constraint([:owner_eid, :subscriber_eid], name: :subscriber_owner_eid_subscriber_eid_index)
+  end
+end
+

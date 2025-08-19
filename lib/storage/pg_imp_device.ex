@@ -1,12 +1,12 @@
-defmodule App.Storage.Postgres do
+defmodule App.Storage.Postgres.Device do
   @behaviour App.StorageIntf
-  alias App.Devices.Device
+  alias App.PG.Devices
   alias App.PgRepo, as: Repo
 
   import Ecto.Query
 
   # save with upsert on device_id
-  def save(%Device{} = device) do
+  def save(%Devices{} = device) do
     device
     |> Device.changeset(%{})   # wrap in changeset (you can adjust attrs if needed)
     |> Repo.insert(
@@ -21,11 +21,11 @@ defmodule App.Storage.Postgres do
 
   # get by device_id (NOT primary key)
   def get(device_id) do
-    Repo.get_by(Device, device_id: device_id)
+    Repo.get_by(Devices, device_id: device_id)
   end
 
   def delete(device_id) do
-    case Repo.get_by(Device, device_id: device_id) do
+    case Repo.get_by(Devices, device_id: device_id) do
       nil -> {:error, :not_found}
       device -> 
         case Repo.delete(device) do
@@ -36,8 +36,9 @@ defmodule App.Storage.Postgres do
   end
 
   def all_by_user(eid) do
-    Device
+    Devices
     |> where([d], d.eid == ^eid)
     |> Repo.all()
   end
+
 end
