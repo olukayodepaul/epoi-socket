@@ -1,6 +1,7 @@
 defmodule DartMessagingServer.Socket do
   @behaviour :cowboy_websocket
   require Logger
+  require Dartmessaging.UserContactList
   
   alias Security.TokenVerifier
   alias Util.{ConnectionsHelper, TokenRevoked, PingPongHelper}
@@ -34,6 +35,23 @@ defmodule DartMessagingServer.Socket do
 
   def websocket_handle(:pong, {:new,{_eid, device_id}} = state) do
     PingPongHelper.handle_pong(device_id, state)
+  end
+
+  def websocket_handle({:binary, data}, state) do
+    case Dartmessaging.UserContactList.decode(data) do
+      %Dartmessaging.UserContactList{device_id: device_id} = data ->
+        Logger.debug("Routing presence message to eid=#{device_id}")
+          case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
+          [{pid, _}] ->
+            GenServer.cast(pid, {:add_contact_list, data})
+          [] ->
+            Logger.warning("No registry entry for #{device_id}, cannot maybe_start_mother")
+          end
+        {:ok, state}
+      _ ->
+        Logger.warning("Invalid presence message received")
+        {:ok, state}
+    end
   end
 
   def terminate(reason, _req, state) do
