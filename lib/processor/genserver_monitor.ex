@@ -5,10 +5,13 @@ defmodule Application.Monitor do
   alias Util.RegistryHelper
   alias App.Devices.Cache
 
+ 
+
   @moduledoc """
   Mother process for a user. Holds state for devices, messages, etc.
   Survives socket termination.
   """
+
   def start_link(eid) do
     GenServer.start(__MODULE__, eid, name: RegistryHelper.via_monitor_registry(eid))
   end
@@ -16,6 +19,8 @@ defmodule Application.Monitor do
   @impl true
   def init(eid) do
     Logger.info("Monitor init for eid=#{eid}")
+
+    
     Cache.init()
     {:ok, %{eid: eid, devices: %{}}}
   end

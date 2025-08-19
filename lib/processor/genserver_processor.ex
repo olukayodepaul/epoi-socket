@@ -4,7 +4,8 @@ defmodule   Application.Processor  do
   alias Util.RegistryHelper
   alias Util.PingPongHelper
   alias App.AllRegistry
-  alias  Followers.AddSubscribers
+  alias  Transports.AppPresence
+  alias Dartmessaging.PresenceSubscription
 
   @moduledoc """
   Child session process representing a device.
@@ -30,33 +31,19 @@ defmodule   Application.Processor  do
   end
 
   @impl true
-  def handle_cast({:add_contact_list, %Dartmessaging.UserContactList{} = data}, state) do
-    IO.inspect({"Reactive", data})
-    AddSubscribers.add_friends_subscriptions(data)
-    {:noreply, state}   # Correct return value for handle_cast
+  def handle_cast({:presence_subscription, %Dartmessaging.PresenceSubscription{} = data}, state) do
+    AppPresence.subscriptions(data)
+    {:noreply, state}
   end
 
   @impl true
   def handle_info(:send_ping, state), do: PingPongHelper.handle_ping(state)
   def handle_info(:received_pong, state), do: {:noreply, PingPongHelper.reset_pongs(state)}
 
-  def handle_info({:presence_update, user_contact}, state) do
-    IO.inspect("Genserver receive the presence update")
-    # case :ets.lookup(:presence_table, user_contact.eid) do
-    #   [{_eid, old_contact}] ->
-    #     if presence_changed?(user_contact, old_contact) do
-    #       :ets.insert(:presence_table, {user_contact.eid, user_contact})
-    #       broadcast_to_subscribers(user_contact)
-    #     end
-
-    #   [] ->
-    #     # first time seeing this user
-    #     :ets.insert(:presence_table, {user_contact.eid, user_contact})
-    #     broadcast_to_subscribers(user_contact)
-    # end
+  @impl true
+  def handle_info({:presence_update, %PresenceSubscription{} = friend_presence}, state) do
+    IO.inspect(friend_presence, label: "Received friend presence")
     {:noreply, state}
   end
-
-  
 
 end

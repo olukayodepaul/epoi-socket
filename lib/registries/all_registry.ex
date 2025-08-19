@@ -20,4 +20,19 @@ defmodule App.AllRegistry do
     end
   end
 
+  def handle_binary(device_id, tag, decode) do
+    IO.inspect(decode)
+    IO.inspect(device_id)
+    IO.inspect(tag)
+
+    case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
+      [{pid, _}] ->
+        # Send the struct directly, no extra tuple
+        GenServer.cast(pid, {tag, decode})
+
+      [] ->
+        Logger.warning("No registry entry for #{device_id}, cannot maybe_start_mother")
+    end
+  end
+
 end

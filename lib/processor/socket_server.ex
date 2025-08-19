@@ -1,10 +1,12 @@
 defmodule DartMessagingServer.Socket do
   @behaviour :cowboy_websocket
   require Logger
-  require Dartmessaging.UserContactList
+  require Dartmessaging.PresenceSubscription
+
   
   alias Security.TokenVerifier
   alias Util.{ConnectionsHelper, TokenRevoked, PingPongHelper}
+  alias App.AllRegistry
 
   def init(req, _state) do
     case TokenVerifier.extract_token(:cowboy_req.header("token", req)) do
@@ -38,21 +40,53 @@ defmodule DartMessagingServer.Socket do
   end
 
   def websocket_handle({:binary, data}, state) do
-    case Dartmessaging.UserContactList.decode(data) do
-      %Dartmessaging.UserContactList{device_id: device_id} = data ->
-        Logger.debug("Routing presence message to eid=#{device_id}")
-          case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
-          [{pid, _}] ->
-            GenServer.cast(pid, {:add_contact_list, data})
-          [] ->
-            Logger.warning("No registry entry for #{device_id}, cannot maybe_start_mother")
-          end
-        {:ok, state}
-      _ ->
-        Logger.warning("Invalid presence message received")
-        {:ok, state}
+    if data == <<>> do
+      Logger.error("Received empty binary")
+      {:ok, state}
+    else
+      cond do
+        decoded = safe_decode(Dartmessaging.PresenceSubscription,  data) ->
+          AllRegistry.handle_binary(decoded.device_id, :presence_subscription, decoded)
+
+        decoded = safe_decode(Dartmessaging.PresenceSignal, data) ->
+          # AllRegistry.handle_binary(decoded.eid, :presence_signal, decoded)
+          IO.inspect(0)
+
+        true ->
+          Logger.error("Invalid message received")
+      end
+
+      {:ok, state}
     end
   end
+
+  defp safe_decode(module, data) do
+    try do
+      module.decode(data)
+    rescue
+      e ->
+        Logger.debug("Decode error for #{inspect(module)}: #{inspect(e)}")
+        false
+    end
+  end
+
+
+
+    # case Dartmessaging.UserContactList.decode(data) do
+    #   %Dartmessaging.UserContactList{device_id: device_id} = data ->
+    #     Logger.debug("Routing presence message to eid=#{device_id}")
+    #       case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
+    #       [{pid, _}] ->
+    #         GenServer.cast(pid, {:add_contact_list, data})
+    #       [] ->
+    #         Logger.warning("No registry entry for #{device_id}, cannot maybe_start_mother")
+    #       end
+    #     {:ok, state}
+    #   _ ->
+    #     Logger.warning("Invalid presence message received")
+    #     {:ok, state}
+    # end
+    # end
 
   def terminate(reason, _req, state) do
     Registries.TerminateHandler.handle_terminate(reason, state)
