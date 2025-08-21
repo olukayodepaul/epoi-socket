@@ -8,7 +8,7 @@ defmodule Registries.TerminateHandler do
     Logger.info("WebSocket terminated for #{device_id}, reason: #{inspect(reason)}")
     case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
       [{pid, _}] ->
-        GenServer.cast(pid, :terminate_device)
+        GenServer.cast(pid, :processor_terminate_device)
       [] ->
         Logger.warning("No registry entry for #{device_id}, cannot maybe_start_mother")
     end

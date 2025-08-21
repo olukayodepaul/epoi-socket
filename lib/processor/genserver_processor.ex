@@ -5,7 +5,7 @@ defmodule   Application.Processor  do
   alias Util.PingPongHelper
   alias App.AllRegistry
   alias  Transports.AppPresence
-  alias Dartmessaging.PresenceSubscription
+  # alias Dartmessaging.PresenceSubscription
 
   @moduledoc """
   Child session process representing a device.
@@ -23,16 +23,21 @@ defmodule   Application.Processor  do
     {:ok, %{missed_pongs: 0, eid: eid, device_id: device_id, ws_pid: ws_pid}}
   end
 
-  #terminate device
+  #Socket to processor
   @impl true
-  def handle_cast(:terminate_device,  %{device_id: device_id, eid: eid} = state) do
+  def handle_cast(:processor_terminate_device,  %{device_id: device_id, eid: eid} = state) do
     AllRegistry.terminate_child_process({eid, device_id})
     {:stop, :normal, state}
   end
 
-  @impl true
-  def handle_cast({:presence_subscription, %Dartmessaging.PresenceSubscription{} = data}, state) do
-    AppPresence.subscriptions(data)
+  def handle_cast({:processor_get_all_subcriber, {device_id, owner_eid, subscribers}}, state) do
+    friends = Enum.map(subscribers, & &1.subscriber_eid)
+    subscription = %Model.PresenceSubscription{
+      owner: owner_eid,
+      device_id: device_id,
+      friends: friends
+    }
+    AppPresence.subscriptions(subscription)
     {:noreply, state}
   end
 
@@ -40,10 +45,11 @@ defmodule   Application.Processor  do
   def handle_info(:send_ping, state), do: PingPongHelper.handle_ping(state)
   def handle_info(:received_pong, state), do: {:noreply, PingPongHelper.reset_pongs(state)}
 
-  @impl true
-  def handle_info({:presence_update, %PresenceSubscription{} = friend_presence}, state) do
-    IO.inspect(friend_presence, label: "Received friend presence")
-    {:noreply, state}
-  end
+  
+ 
+  # def handle_info({:presence_update, %PresenceSubscription{} = friend_presence}, state) do
+  #   IO.inspect(friend_presence, label: "Received friend presence")
+  #   {:noreply, state}
+  # end
 
 end

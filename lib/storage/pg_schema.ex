@@ -4,7 +4,7 @@ defmodule App.PG.Devices do
 
   @primary_key {:id, :id, autogenerate: true}   # SERIAL primary key
   @derive {Jason.Encoder, only: [
-    :id, :device_id, :eid, :last_seen, :status,
+    :id, :device_id, :eid, :last_seen, :ws_pid, :status,
     :last_received_version, :ip_address, :app_version,
     :os, :last_activity, :supports_notifications,
     :supports_media, :inserted_at
@@ -13,6 +13,7 @@ defmodule App.PG.Devices do
     field :device_id, :string        # unique but not primary key
     field :eid, :string
     field :last_seen, :utc_datetime
+    field :ws_pid, :string
     field :status, :string
     field :last_received_version, :integer
     field :ip_address, :string
@@ -28,7 +29,7 @@ defmodule App.PG.Devices do
   def changeset(device, attrs) do
     device
     |> cast(attrs, [
-      :device_id, :eid, :last_seen, :status,
+      :device_id, :eid, :last_seen, :ws_pid, :status,
       :last_received_version, :ip_address, :app_version,
       :os, :last_activity, :supports_notifications,
       :supports_media, :inserted_at

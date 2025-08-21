@@ -4,12 +4,14 @@ defmodule Util.PingPongHelper do
   # alias Util.DisconnectReason
   alias Registries.PingPong
   alias ApplicationServer.Configuration
+  alias  App.AllRegistry
 
   @max_missed_pongs Configuration.max_missed_pongs()
 
-  def handle_ping(%{missed_pongs: missed, eid: _eid, device_id: device_id, ws_pid: ws_pid} = state) do
+  def handle_ping(%{missed_pongs: missed, eid: eid, device_id: device_id, ws_pid: ws_pid} = state) do
     if missed >= @max_missed_pongs do
       Logger.warning("Missed pong limit reached for #{device_id}, closing connection gracefully")
+      AllRegistry.terminate_child_process({eid, device_id})
       {:stop, :normal, state}
     else
       Logger.debug("Sending ping to #{device_id}, missed=#{missed}")

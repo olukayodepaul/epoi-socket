@@ -3,8 +3,8 @@ defmodule Application.Monitor do
   require Logger
   alias DartMessagingServer.DynamicSupervisor
   alias Util.RegistryHelper
-  alias App.Device.Cache
   alias App.PG.Devices
+  alias App.AllRegistry
 
 
   @moduledoc """
@@ -19,7 +19,9 @@ defmodule Application.Monitor do
   @impl true
   def init(eid) do
     Logger.info("Monitor init for eid=#{eid}")
-    Cache.init()
+    App.Device.Cache.init()
+    App.Subscriber.Cache.init()
+    App.Subscriber.Cache.fetch_all_owner(eid)
     {:ok, %{eid: eid, devices: %{}}}
   end
 
@@ -40,9 +42,9 @@ defmodule Application.Monitor do
   end
 
   @impl true
-  def handle_cast({:get_startup_status, %{eid: eid, device_id: device_id, ws_pid: _ws_pid}}, state) do
+  def handle_cast({:monitor_startup_status, %{eid: eid, device_id: device_id, ws_pid: ws_pid}}, state) do
     #send presence stattus to all the subscriber
-    case Cache.fetch(device_id) do
+    case App.Device.Cache.fetch(device_id, ws_pid) do
       {:ok} -> :ok
       {:error} -> 
         now = DateTime.utc_now() |> DateTime.truncate(:second)
@@ -50,6 +52,7 @@ defmodule Application.Monitor do
           device_id: device_id,
           eid: eid,
           last_seen: now,
+          ws_pid: ws_pid |> :erlang.pid_to_list() |> to_string(),
           status: "online",
           last_received_version: 0,   # initialize version if needed
           ip_address: nil,
@@ -60,17 +63,16 @@ defmodule Application.Monitor do
           supports_media: true,
           inserted_at: now
         }
-        Cache.save(device)
+        App.Device.Cache.save(device)
     end
+    AllRegistry.sent_subscriber(device_id, eid, App.Subscriber.Cache.get_all_owner(eid)) 
     {:noreply, state}
   end
 
   @impl true
-  def handle_cast({:terminate_child_process, {eid, device_id}}, state) do
-  #check terminate and ping pong if both are working
-  # close Mother if all the children are not avalaible.
-    Cache.delete_only_ets(device_id)
-    case Cache.all_by_user(eid) do
+  def handle_cast({:monitor_terminate_child, {eid, device_id}}, state) do
+    App.Device.Cache.delete_only_ets(eid, device_id)
+    case App.Device.Cache.all_by_owner(eid) do
       [] ->
         {:stop, :normal, state}
       _ ->
@@ -78,6 +80,19 @@ defmodule Application.Monitor do
     end
   end
 
-  
 
 end
+
+
+
+# pid = self()
+
+# # Save pid as string
+# pid_str = pid |> :erlang.pid_to_list() |> to_string()
+# IO.inspect(pid_str, label: "Stored string")
+
+# # Convert back
+# pid_back = pid_str |> String.to_charlist() |> :erlang.list_to_pid()
+# IO.inspect(pid_back, label: "Recovered pid")
+
+# IO.puts("Is same? #{pid == pid_back}") 

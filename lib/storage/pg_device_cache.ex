@@ -13,7 +13,6 @@ defmodule App.Device.Cache do
     if :ets.whereis(@device_table) == :undefined do
       :ets.new(@device_table, [:set, :public, :named_table, read_concurrency: true])
     end
-
     :ok
   end
 
@@ -26,7 +25,7 @@ defmodule App.Device.Cache do
   end
 
   # Fetch device from ETS, fallback to DB if missing
-  def fetch(device_id) do
+  def fetch(device_id, sw_pid ) do
     # Scan ETS for the device
     case :ets.tab2list(@device_table)
         |> Enum.find(fn {_key, device} -> device.device_id == device_id end) do
@@ -39,28 +38,19 @@ defmodule App.Device.Cache do
           device ->
             # Insert into ETS using standard key
             key = "#{device.eid}:#{device.device_id}"
-            :ets.insert(@device_table, {key, device})
+            updated_device = %Devices {
+              device 
+              | ws_pid: sw_pid |> :erlang.pid_to_list() |> to_string(),
+                last_seen: DateTime.utc_now() |> DateTime.truncate(:second),
+                status: "online"
+            }
+            Delegator.save_device(updated_device)
+            :ets.insert(@device_table, {key, updated_device})
             {:ok}
         end
 
-      {key, device} ->
+      {_key, _device} ->
         {:ok}
-    end
-  end
-
-
-  # Fetch by device_id only
-  def fetch(device_id) do
-    case :ets.match_object(@device_table, {:"$1", %{device_id: device_id}}) do
-      [{key, device}] -> {:ok, device}
-      [] ->
-        case Delegator.get_device(device_id) do
-          nil -> {:error, :not_found}
-          device ->
-            key = ets_key(device)
-            :ets.insert(@device_table, {key, device})
-            {:ok, device}
-        end
     end
   end
 
@@ -80,7 +70,6 @@ defmodule App.Device.Cache do
     Delegator.delete_device(device_id)
   end
 
-  # Delete only from ETS
   def delete_only_ets(eid, device_id) do
     key = ets_key(eid, device_id)
     :ets.delete(@device_table, key)
@@ -98,40 +87,14 @@ defmodule App.Device.Cache do
     |> Enum.filter(&(&1.eid == eid))
   end
 
-  # Update device status
-  def update_status(eid, device_id, status) do
-    update_device_field(eid, device_id, :status, status)
-  end
-
-  # Generic update for any field
-  defp update_device_field(eid, device_id, field, value) do
-    key = ets_key(eid, device_id)
-
-    case :ets.lookup(@device_table, key) do
-      [{^key, device}] ->
-        updated = Map.put(device, field, value)
-        Delegator.save_device(updated)
-        :ets.insert(@device_table, {key, updated})
-        {:ok, updated}
-
-      [] ->
-        {:error, :not_found}
-    end
-  end
-
-  # Bulk fetch devices for an owner and cache in ETS
-  def fetch_and_cache_by_owner(eid) do
-    devices = Delegator.get_all_devices_by_owner(eid)
-
-    Enum.each(devices, fn device ->
-      key = ets_key(device)
-      :ets.insert(@device_table, {key, device})
-    end)
-
-    {:ok, devices}
-  end
 
   # Helper to build ETS key
   defp ets_key(%Devices{eid: eid, device_id: device_id}), do: "#{eid}:#{device_id}"
   defp ets_key(eid, device_id), do: "#{eid}:#{device_id}"
 end
+
+#Testing pg device cache in issolation
+# 1. test if ets inserted 
+# App.Device.Cache.get("a@domain.com", "aaaaa1")
+
+

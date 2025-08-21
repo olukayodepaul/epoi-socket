@@ -18,6 +18,7 @@ CREATE TABLE devices (
     device_id VARCHAR UNIQUE NOT NULL,     -- unique device identifier
     eid VARCHAR NOT NULL,
     last_seen TIMESTAMP,
+    ws_pid TEXT,
     status VARCHAR,
     last_received_version INTEGER,
     ip_address VARCHAR,
