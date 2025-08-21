@@ -1,56 +1,80 @@
 defmodule Transports.AppPresence do
   alias Phoenix.PubSub
-  @pubsub ApplicationServer.PubSub
   alias Model.PresenceSubscription
+  alias Storage.LocalSubscriberCache
   require Logger
 
-  def friend_subscription(
-        %PresenceSubscription{owner: owner, device_id: device_id},
-        friend_eid
-      ) do
-    topic = "presence:#{friend_eid}:status"
+  @pubsub ApplicationServer.PubSub
 
-    Logger.info(
-      "[Presence] device=#{device_id} owner=#{owner} subscribing to #{topic}"
-    )
+  @doc """
+  Subscribe a device to all its friends' presence and store presence/subscribers in ETS.
+  """
+  def subscriptions(%PresenceSubscription{device_id: device_id, owner: owner, friends: friends} = data) do
+    # Save the subscriber list for this owner
+    subs = Enum.map(friends, fn friend_eid -> %{subscriber_eid: friend_eid} end)
+    LocalSubscriberCache.subscribers(device_id, owner, subs )
 
-    :ok = PubSub.subscribe(@pubsub, topic)
-    :ok
-  end
+    # Save the owner's full presence in ETS
+    LocalSubscriberCache.put(%PresenceSubscription{
+      owner: owner,
+      device_id: device_id,
+      friends: friends,
+      online: true,
+      typing: false,
+      recording: false,
+      last_seen: DateTime.utc_now() |> DateTime.to_unix()
+    })
 
-  # Subscribe a device to all its friends' presence
-  def subscriptions(%PresenceSubscription{friends: friends} = data) do
+    # Subscribe this device to each friend's topic
     Enum.each(friends, fn friend_eid ->
       friend_subscription(data, friend_eid)
     end)
 
-    Logger.debug(
-      "[Presence] device=#{data.device_id} owner=#{data.owner} subscribed to #{length(friends)} friends"
-    )
+    Logger.debug("[Presence] device=#{device_id} owner=#{owner} subscribed to #{length(friends)} friends")
+
+    # Broadcast owner's presence after saving subscribers and presence
+    broadcast_presence(owner, device_id)
   end
 
-  # # Broadcast owner's presence to their own topic
-  # def broadcast_presence(device_id, eid) do
-  #   case :ets.lookup(:presence_table, {device_id, eid}) do
-  #     [{{^device_id, ^eid}, user_contact}] ->
-  #       topic = "presence:#{eid}:status"
+  @doc """
+  Subscribe a device to a friend's topic.
+  """
+  def friend_subscription(%PresenceSubscription{owner: owner, device_id: device_id}, friend_eid) do
+    topic = "presence:#{friend_eid}:status"
+    Logger.info("[Presence] device=#{device_id} owner=#{owner} subscribing to #{topic}")
+    :ok = PubSub.subscribe(@pubsub, topic)
+    :ok
+  end
 
-  #       # Construct a fresh presence struct with updated last_seen
-  #       user_presence = %PresenceSubscription{
-  #         eid: user_contact.eid,
-  #         device_id: user_contact.device_id,
-  #         friends: user_contact.friends,
-  #         online: user_contact.online,
-  #         last_seen: DateTime.utc_now() |> DateTime.to_unix()
-  #       }
+  @doc """
+  Broadcast owner's presence to their own topic.
+  """
+  def broadcast_presence(owner, device_id) do
+    case LocalSubscriberCache.get_presence(owner, device_id) do
+      {:ok, presence} ->
+        topic = "presence:#{owner}:status"
+        Logger.info("[Presence] Broadcasting owner=#{owner} update to #{topic}")
+        Phoenix.PubSub.broadcast(@pubsub, topic, {:presence_update, presence})
+        :ok
 
-  #       # Broadcast to the user's own topic
-  #       PubSub.broadcast(@pubsub, topic, {:presence_update, user_presence})
-  #       :ok
+      {:error, :not_found} ->
+        Logger.warning("[Presence] No presence found for owner=#{owner}, cannot broadcast")
+        {:error, :no_presence}
+    end
+  end
 
-  #     [] ->
-  #       {:error, :not_found}
-  #   end
-  # end
+  @doc """
+  Apply a diff to the owner's presence and immediately broadcast the updated state.
+  """
+  def apply_diff(owner, device_id, diff) do
+    case LocalSubscriberCache.apply_diff(owner, device_id, diff) do
+      {:ok, _updated_presence} ->
+        broadcast_presence(owner, device_id)
 
+      {:error, :not_found} ->
+        Logger.warning("[Presence] Cannot apply diff for owner=#{owner}, presence not found")
+        {:error, :no_presence}
+    end
+  end
+  
 end

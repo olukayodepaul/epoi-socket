@@ -5,6 +5,7 @@ defmodule Application.Monitor do
   alias Util.RegistryHelper
   alias App.PG.Devices
   alias App.AllRegistry
+  alias Storage.GlobalSubscriberCache
 
 
   @moduledoc """
@@ -20,8 +21,8 @@ defmodule Application.Monitor do
   def init(eid) do
     Logger.info("Monitor init for eid=#{eid}")
     App.Device.Cache.init()
-    App.Subscriber.Cache.init()
-    App.Subscriber.Cache.fetch_all_owner(eid)
+    GlobalSubscriberCache.init()
+    GlobalSubscriberCache.fetch_all_owner(eid)
     {:ok, %{eid: eid, devices: %{}}}
   end
 
@@ -65,7 +66,7 @@ defmodule Application.Monitor do
         }
         App.Device.Cache.save(device)
     end
-    AllRegistry.sent_subscriber(device_id, eid, App.Subscriber.Cache.get_all_owner(eid)) 
+    AllRegistry.sent_subscriber(device_id, eid, GlobalSubscriberCache.get_all_owner(eid)) 
     {:noreply, state}
   end
 
@@ -79,7 +80,7 @@ defmodule Application.Monitor do
         {:noreply, state}
     end
   end
-
+GlobalSubscriberCache
 
 end
 

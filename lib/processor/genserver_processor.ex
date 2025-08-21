@@ -5,7 +5,8 @@ defmodule   Application.Processor  do
   alias Util.PingPongHelper
   alias App.AllRegistry
   alias  Transports.AppPresence
-  # alias Dartmessaging.PresenceSubscription
+  alias Storage.LocalSubscriberCache
+  alias Model.PresenceSubscription
 
   @moduledoc """
   Child session process representing a device.
@@ -20,6 +21,7 @@ defmodule   Application.Processor  do
   def init({eid, device_id, ws_pid}) do
     PingPongHelper.schedule_ping(device_id)
     AllRegistry.set_startup_status({eid, device_id, ws_pid})
+    LocalSubscriberCache.init(device_id)
     {:ok, %{missed_pongs: 0, eid: eid, device_id: device_id, ws_pid: ws_pid}}
   end
 
@@ -32,11 +34,17 @@ defmodule   Application.Processor  do
 
   def handle_cast({:processor_get_all_subcriber, {device_id, owner_eid, subscribers}}, state) do
     friends = Enum.map(subscribers, & &1.subscriber_eid)
-    subscription = %Model.PresenceSubscription{
+    
+    subscription = %PresenceSubscription{
       owner: owner_eid,
       device_id: device_id,
-      friends: friends
+      friends: friends,
+      online: true,
+      typing: false,
+      recording: false,
+      last_seen: DateTime.utc_now() |> DateTime.to_unix()
     }
+    
     AppPresence.subscriptions(subscription)
     {:noreply, state}
   end
@@ -45,11 +53,11 @@ defmodule   Application.Processor  do
   def handle_info(:send_ping, state), do: PingPongHelper.handle_ping(state)
   def handle_info(:received_pong, state), do: {:noreply, PingPongHelper.reset_pongs(state)}
 
-  
- 
-  # def handle_info({:presence_update, %PresenceSubscription{} = friend_presence}, state) do
-  #   IO.inspect(friend_presence, label: "Received friend presence")
-  #   {:noreply, state}
-  # end
+  # Optional: handle incoming presence updates from friends
+  def handle_info({:presence_update, %PresenceSubscription{} = friend_presence}, state) do
+    Logger.debug("Received presence update from #{friend_presence.owner}")
+    {:noreply, state}
+  end
+
 
 end

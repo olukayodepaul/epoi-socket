@@ -24,35 +24,51 @@ defmodule App.Device.Cache do
     :ok
   end
 
-  # Fetch device from ETS, fallback to DB if missing
-  def fetch(device_id, sw_pid ) do
-    # Scan ETS for the device
+  # Fetch device from ETS, fallback to DB if missing, always update with current info
+  def fetch(device_id, sw_pid) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+    pid_str = sw_pid |> :erlang.pid_to_list() |> to_string()
+
     case :ets.tab2list(@device_table)
         |> Enum.find(fn {_key, device} -> device.device_id == device_id end) do
       nil ->
-        # Not found in ETS, fallback to DB
+        # Not found in ETS → fallback to DB
         case Delegator.get_device(device_id) do
           nil ->
             {:error}
 
           device ->
-            # Insert into ETS using standard key
             key = "#{device.eid}:#{device.device_id}"
-            updated_device = %Devices {
-              device 
-              | ws_pid: sw_pid |> :erlang.pid_to_list() |> to_string(),
-                last_seen: DateTime.utc_now() |> DateTime.truncate(:second),
+
+            updated_device = %Devices{
+              device
+              | ws_pid: pid_str,
+                last_seen: now,
                 status: "online"
             }
+
             Delegator.save_device(updated_device)
             :ets.insert(@device_table, {key, updated_device})
+
             {:ok}
         end
 
-      {_key, _device} ->
+      {key, device} ->
+        # Found in ETS → just update info
+        updated_device = %Devices{
+          device
+          | ws_pid: pid_str,
+            last_seen: now,
+            status: "online"
+        }
+
+        Delegator.save_device(updated_device)
+        :ets.insert(@device_table, {key, updated_device})
+
         {:ok}
     end
   end
+
 
   # Get device from ETS only
   def get(eid, device_id) do
@@ -93,8 +109,6 @@ defmodule App.Device.Cache do
   defp ets_key(eid, device_id), do: "#{eid}:#{device_id}"
 end
 
-#Testing pg device cache in issolation
-# 1. test if ets inserted 
-# App.Device.Cache.get("a@domain.com", "aaaaa1")
+
 
 
