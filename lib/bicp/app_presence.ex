@@ -1,4 +1,4 @@
-defmodule Transports.AppPresence do
+defmodule Bicp.AppPresence do
   alias Phoenix.PubSub
   alias Model.PresenceSubscription
   alias Storage.LocalSubscriberCache
@@ -9,6 +9,11 @@ defmodule Transports.AppPresence do
   @doc """
   Subscribe a device to all its friends' presence and store presence/subscribers in ETS.
   """
+
+  # When user A (socket/GenServer) comes online: 
+  # I call AppPresence.subscriptions/1.
+  # Inside friend_subscription/2 you do:
+  # That means: Owners process is now subscribed to each friend’s presence topic.
   def subscriptions(%PresenceSubscription{device_id: device_id, owner: owner, friends: friends} = data) do
     # Save the subscriber list for this owner
     subs = Enum.map(friends, fn friend_eid -> %{subscriber_eid: friend_eid} end)
@@ -49,6 +54,7 @@ defmodule Transports.AppPresence do
   @doc """
   Broadcast owner's presence to their own topic.
   """
+  # Owner send his own broadcast
   def broadcast_presence(owner, device_id) do
     case LocalSubscriberCache.get_presence(owner, device_id) do
       {:ok, presence} ->

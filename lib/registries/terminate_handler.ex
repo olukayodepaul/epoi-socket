@@ -1,6 +1,7 @@
 defmodule Registries.TerminateHandler do
   require Logger
 
+
   @doc """
   Handles cleanup and logging when a WebSocket terminates.
   """

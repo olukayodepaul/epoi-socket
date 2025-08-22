@@ -7,7 +7,6 @@ defmodule Application.Monitor do
   alias App.AllRegistry
   alias Storage.GlobalSubscriberCache
 
-
   @moduledoc """
   Mother process for a user. Holds state for devices, messages, etc.
   Survives socket termination.

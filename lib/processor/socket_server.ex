@@ -37,6 +37,25 @@ defmodule DartMessagingServer.Socket do
     PingPongHelper.handle_pong(device_id, state)
   end
 
+  def websocket_handle({:text, msg},  {:new,{_eid, device_id}} = state) do
+    diff = parse_message(msg)
+    case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
+      [{pid, _}] ->
+        GenServer.cast(pid, {:presence_update, diff})
+      [] ->
+        IO.inspect("not herererre")
+    end
+    IO.inspect(diff)
+    {:ok, state}
+  end
+
+  # Helper parser
+  defp parse_message(msg) do
+    # Convert JSON string into a diff tuple
+    # For simplicity, assume typing only
+    if msg == "{\"typing\":true}", do: {:typing, :client, true}, else: {:typing, :client, false}
+  end
+
   # def websocket_handle({:binary, data}, state) do
   #   if data == <<>> do
   #     Logger.error("Received empty binary")

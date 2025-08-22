@@ -4,7 +4,7 @@ defmodule   Application.Processor  do
   alias Util.RegistryHelper
   alias Util.PingPongHelper
   alias App.AllRegistry
-  alias  Transports.AppPresence
+  alias Bicp.AppPresence
   alias Storage.LocalSubscriberCache
   alias Model.PresenceSubscription
 
@@ -29,6 +29,7 @@ defmodule   Application.Processor  do
   @impl true
   def handle_cast(:processor_terminate_device,  %{device_id: device_id, eid: eid} = state) do
     AllRegistry.terminate_child_process({eid, device_id})
+    :ets.delete(LocalSubscriberCache.table_name(device_id))
     {:stop, :normal, state}
   end
 
@@ -49,15 +50,35 @@ defmodule   Application.Processor  do
     {:noreply, state}
   end
 
+  # Handle presence updates from client
+  def handle_cast({:presence_update, diff}, %{device_id: device_id, eid: eid} = state) do
+    IO.inspect("get the presence here")
+    AppPresence.apply_diff(eid, device_id, diff)
+    {:noreply, state}
+  end
+
   @impl true
   def handle_info(:send_ping, state), do: PingPongHelper.handle_ping(state)
   def handle_info(:received_pong, state), do: {:noreply, PingPongHelper.reset_pongs(state)}
 
   # Optional: handle incoming presence updates from friends
-  def handle_info({:presence_update, %PresenceSubscription{} = friend_presence}, state) do
-    Logger.debug("Received presence update from #{friend_presence.owner}")
+  def handle_info({:presence_update, %PresenceSubscription{} = presence}, state) do
+
+    # Optionally update local ETS if you want per-friend presence cache
+    # LocalSubscriberCache.put(presence)
+
+    # Push the update to the client socket
+    IO.inspect("start")
+    IO.inspect(state)
+    IO.inspect(presence)
+    IO.inspect("end")
     {:noreply, state}
+
   end
 
+
+
+
+  
 
 end

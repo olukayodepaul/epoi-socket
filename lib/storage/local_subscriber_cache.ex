@@ -5,7 +5,7 @@ defmodule Storage.LocalSubscriberCache do
   """
 
   # Generate ETS table name for a device
-  defp table_name(device_id), do: String.to_atom("local_presence_#{device_id}")
+  def table_name(device_id), do: String.to_atom("local_presence_#{device_id}")
 
   # Initialize ETS table for this device
   def init(device_id) do
@@ -72,6 +72,16 @@ defmodule Storage.LocalSubscriberCache do
 
   def apply_diff(owner, device_id, {:last_seen, _from, ts}),
     do: update_presence(owner, device_id, &%{&1 | last_seen: ts})
+
+  def delete(device_id) do
+    table = table_name(device_id)
+    case :ets.whereis(table) do
+      :undefined -> :ok
+      tid when is_reference(tid) -> :ets.delete(table)
+      tid when is_integer(tid) -> :ets.delete(table)
+    end
+    :ok
+  end
 
   # Internal helper to update presence
   defp update_presence(owner, device_id, fun) do
