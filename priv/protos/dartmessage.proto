@@ -2,57 +2,41 @@ syntax = "proto3";
 
 package dartmessaging;
 
-// Possible states of a message during its lifecycle
-enum MessageStatus {
-  PENDING   = 0;  // Message is created but not sent yet
-  SENT      = 1;  // Message was sent from the client
-  DELIVERED = 2;  // Message reached recipient’s device/server
-  READ      = 3;  // Message was opened/read by the recipient
-  FAILED    = 4;  // Failed to deliver
+// Global broadcast: user awareness (online/offline/away/dnd)
+message Awareness {
+  string from = 1;             // eid/device_id, e.g. "alice@domain.com/phone"
+  int64 last_seen = 2;         // Unix timestamp
+  AwarenessStatus status = 3;  // online, away, dnd, offline
+  double latitude = 4;         // Optional: device latitude
+  double longitude = 5;        // Optional: device longitude
 }
 
-enum PresenceStatus {
-  ONLINE = 0;        // User is online and available
-  BUSY = 1;          // User is online but busy, may not receive updates
-  DO_NOT_DISTURB = 2;// User does not want to be disturbed
-  OFFLINE = 3;       // User is offline
+enum AwarenessStatus {
+  ONLINE = 0;
+  AWAY = 1;
+  DND = 2;
+  OFFLINE = 3;
 }
 
-
-// Core message exchanged between clients
-message DartMessage {
-  string id = 1;               // Unique message ID
-  string from_eid = 2;         // Sender's entity ID
-  string from_device_id = 3;   // Sender’s device ID
-  string to_eid = 4;           // Recipient’s entity ID
-  string to_device_id = 5;     // Recipient’s device ID (optional for multi-device)
-  string body = 6;             // Actual message body (text)
-  MessageStatus status = 7;    // Status of the message
-  uint64 last_received = 8;    // Last time recipient acknowledged receipt
-  int64 timestamp = 9;         // Message creation timestamp
-}
-
-// A user's contacts + online metadata
-message PresenceSubscription {
-  string eid = 1;                  // Unique user identifier (the owner of this list)
-  string device_id = 2;            // Device ID reporting this state
-  repeated string friends = 3;     // List of friend EIDs
-  bool online = 4;                 // Online status of the user
-  uint64 last_seen = 5;            // Unix timestamp of last seen
-}
-
-// Minimal presence info for broadcasting
-message PresenceSignal {
-  string eid = 1;              // User ID
-  string device_id = 2;        // Device ID
-  int64 last_seen = 3;         // Unix timestamp
-  PresenceStatus status = 4;   // Current presence status
+// Peer-specific presence (activities, short-lived states)
+message Presence {
+  string from = 1;             // Sender (eid/device_id)
+  string to = 2;               // Recipient (eid/device_id)
+  PresenceType type = 3;       // typing, recording, etc.
+  int64 timestamp = 4;         // When the activity started
   double latitude = 5;         // Optional: device latitude
   double longitude = 6;        // Optional: device longitude
 }
 
-// Wrapper message for sending both user contact and broadcast info in one binary
+enum PresenceType {
+  TYPING = 0;      // User is typing
+  RECORDING = 1;   // User is recording audio
+  REACTING = 2;    // User is reacting (emoji, etc.)
+  VIEWING = 3;     // User is viewing a message
+}
+
+
 message PresenceRequest {
-  PresenceSubscription user_contact = 1;
-  PresenceSignal presence_broadcast = 2;
+  Awareness awareness = 1;
+  Presence presence = 2;  
 }

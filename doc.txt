@@ -1,0 +1,12 @@
+// A user's contacts + online metadata
+message PresenceSubscription {
+  from="eid/deviceId"                // Unique user identifier (the owner of this list)
+  type=
+  repeated string friends = 3;     // List of friend EIDs
+  bool online = 4;                 // Online status of the user
+  uint64 last_seen = 5;            // Unix timestamp of last seen
+}
+
+
+//message
+ from="eid/deviceId"

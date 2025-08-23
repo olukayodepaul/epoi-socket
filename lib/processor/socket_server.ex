@@ -2,6 +2,8 @@ defmodule DartMessagingServer.Socket do
   @behaviour :cowboy_websocket
   require Logger
 
+  alias App.AllRegistry
+
   alias Security.TokenVerifier
   alias Util.{ConnectionsHelper, TokenRevoked, PingPongHelper}
   # alias App.AllRegistry
@@ -33,59 +35,45 @@ defmodule DartMessagingServer.Socket do
     {:reply, :ping, state}
   end
 
+  def websocket_info({:binary, binary}, state) do
+    Logger.info("Sending awareness frame to client")
+    {:reply, {:binary, binary}, state}
+  end
+
   def websocket_handle(:pong, {:new,{_eid, device_id}} = state) do
     PingPongHelper.handle_pong(device_id, state)
   end
 
-  def websocket_handle({:text, msg},  {:new,{_eid, device_id}} = state) do
-    diff = parse_message(msg)
-    case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
-      [{pid, _}] ->
-        GenServer.cast(pid, {:presence_update, diff})
-      [] ->
-        IO.inspect("not herererre")
+  def websocket_handle({:binary, data},  {:new,{_eid, device_id}} = state) do
+    if data == <<>> do
+      Logger.error("Received empty binary")
+      {:ok, state}
+    else
+      cond do
+        decoded = safe_decode(Dartmessaging.Awareness, data) ->
+          AllRegistry.handle_awareness(decoded, device_id)
+          
+        # decoded = safe_decode(Dartmessaging.PresenceSignal, data) ->
+        #   # AllRegistry.handle_binary(decoded.eid, :presence_signal, decoded)
+        #   IO.inspect(0)
+
+        true ->
+          Logger.error("Invalid message received")
+      end
+
+      {:ok, state}
     end
-    IO.inspect(diff)
-    {:ok, state}
   end
 
-  # Helper parser
-  defp parse_message(msg) do
-    # Convert JSON string into a diff tuple
-    # For simplicity, assume typing only
-    if msg == "{\"typing\":true}", do: {:typing, :client, true}, else: {:typing, :client, false}
+  defp safe_decode(module, data) do
+    try do
+      module.decode(data)
+    rescue
+      e ->
+        Logger.debug("Decode error for #{inspect(module)}: #{inspect(e)}")
+        false
+    end
   end
-
-  # def websocket_handle({:binary, data}, state) do
-  #   if data == <<>> do
-  #     Logger.error("Received empty binary")
-  #     {:ok, state}
-  #   else
-  #     cond do
-  #       decoded = safe_decode(Dartmessaging.PresenceSubscription,  data) ->
-  #         AllRegistry.handle_binary(decoded.device_id, :presence_subscription, decoded)
-
-  #       # decoded = safe_decode(Dartmessaging.PresenceSignal, data) ->
-  #       #   # AllRegistry.handle_binary(decoded.eid, :presence_signal, decoded)
-  #       #   IO.inspect(0)
-
-  #       true ->
-  #         Logger.error("Invalid message received")
-  #     end
-
-  #     {:ok, state}
-  #   end
-  # end
-
-  # defp safe_decode(module, data) do
-  #   try do
-  #     module.decode(data)
-  #   rescue
-  #     e ->
-  #       Logger.debug("Decode error for #{inspect(module)}: #{inspect(e)}")
-  #       false
-  #   end
-  # end
 
   def terminate(reason, _req, state) do
     Registries.TerminateHandler.handle_terminate(reason, state)

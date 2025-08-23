@@ -20,7 +20,7 @@ defmodule Application.Monitor do
   def init(eid) do
     Logger.info("Monitor init for eid=#{eid}")
     App.Device.Cache.init()
-    GlobalSubscriberCache.init()
+    GlobalSubscriberCache.init(eid)
     GlobalSubscriberCache.fetch_all_owner(eid)
     {:ok, %{eid: eid, devices: %{}}}
   end
@@ -74,12 +74,12 @@ defmodule Application.Monitor do
     App.Device.Cache.delete_only_ets(eid, device_id)
     case App.Device.Cache.all_by_owner(eid) do
       [] ->
+        GlobalSubscriberCache.delete(eid)
         {:stop, :normal, state}
       _ ->
         {:noreply, state}
     end
   end
-GlobalSubscriberCache
 
 end
 

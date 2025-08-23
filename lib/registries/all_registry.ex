@@ -35,16 +35,20 @@ defmodule App.AllRegistry do
     end
   end
 
-  def handle_binary(device_id, socket_tag, decode) do
+  def handle_awareness(awareness, device_id) do
     case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
       [{pid, _}] ->
-        # Send the struct directly, no extra tuple
-        GenServer.cast(pid, {socket_tag, decode})
+        GenServer.cast(pid, {:processor_awareness, awareness})
         :ok
       [] ->
         Logger.warning("No registry entry for #{device_id}, cannot maybe_start_mother")
         {:error}
     end
   end
+
+  # def handle_awareness_response(sw_pid, awareness) do
+  #   send(sw_pid, {:socket_awareness_response, awareness})
+  # end
+
 
 end

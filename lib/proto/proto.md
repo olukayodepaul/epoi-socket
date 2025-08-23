@@ -71,7 +71,7 @@ signal = %Dartmessaging.PresenceSignal{
   longitude: 3.3792
 }
 
-binary = Dartmessaging.PresenceSignal.encode(signal)
+binary = Dartmessaging.Awareness.encode(user_contact)
 hex = Base.encode16(binary, case: :upper)
 
 JWT.generate_tokens(%{device_id: "aaaaa", eid: "a@domain.com", user_id: "1"})
@@ -79,3 +79,44 @@ JWT.generate_tokens(%{device_id: "bbbbb", eid: "b@domain.com", user_id: "1"})
 ```
 
 0A0C6140646F6D61696E2E636F6D120561616161611A0C6240646F6D61696E2E636F6D200128F39BA88F8C33
+
+user_contact = %Dartmessaging.Awareness{
+from: "alice@domain.com/phone",
+last_seen: DateTime.utc_now() |> DateTime.to_unix(),
+status: AwarenessStatus.ONLINE,
+latitude: 6.5244,
+longitude: 3.3792
+}
+
+binary = Dartmessaging.Awareness.encode(user_contact)
+hex = Base.encode16(binary, case: :upper)
+
+# Another instance
+
+user_contact = %Dartmessaging.Awareness{
+from: "bob@domain.com/laptop",
+last_seen: DateTime.utc_now() |> DateTime.to_unix(),
+status: AwarenessStatus.AWAY,
+latitude: 51.5074,
+longitude: -0.1278
+}
+
+```
+alias Dartmessaging.Awareness
+
+# Use the fully qualified enum
+user_contact = %Awareness{
+  from: "a@domain.com/aaaaa1",
+  last_seen: DateTime.utc_now() |> DateTime.to_unix(),
+  status: :ONLINE,   # enum value as atom
+  latitude: 6.5244,
+  longitude: 3.3792
+}
+
+# Encode to protobuf binary
+binary = Dartmessaging.Awareness.encode(user_contact)
+hex = Base.encode16(binary, case: :upper)
+
+IO.puts(hex)
+
+```

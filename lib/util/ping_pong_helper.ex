@@ -30,10 +30,6 @@ defmodule Util.PingPongHelper do
     PingPong.schedule_ping_registry(device_id)
   end
 
-  # defp build_disconnect_message do
-  #   reason = DisconnectReason.missed_pong()
-  #   Jason.encode!(%{type: "disconnect", reason: reason.message})
-  # end
 
   def handle_pong(device_id, state) do
     Logger.info("Received pong from client: #{device_id}")

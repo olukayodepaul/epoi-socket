@@ -14,6 +14,8 @@ defmodule Registries.PingPong do
     end
   end
 
+  #checking the reciving ping. should use GenServer.cast..
+  #Socket to the GenServer
   def handle_pong_registry(device_id) do
     case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
       [{pid, _}] ->
