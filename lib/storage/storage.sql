@@ -1,9 +1,10 @@
 CREATE TABLE subscriber (
-id BIGSERIAL PRIMARY KEY,
-owner_eid VARCHAR NOT NULL,
-subscriber_eid VARCHAR NOT NULL,
-status VARCHAR NOT NULL CHECK (status IN ('block', 'active')),
-inserted_at TIMESTAMP DEFAULT now()
+    id BIGSERIAL PRIMARY KEY,
+    owner_eid VARCHAR NOT NULL,
+    subscriber_eid VARCHAR NOT NULL,
+    status VARCHAR NOT NULL CHECK (status IN ('block', 'active')),
+    awareness_status VARCHAR NOT NULL DEFAULT 'allow' CHECK (awareness_status IN ('allow', 'block')),
+    inserted_at TIMESTAMP DEFAULT now()
 );
 
 -- 🔎 Indexes

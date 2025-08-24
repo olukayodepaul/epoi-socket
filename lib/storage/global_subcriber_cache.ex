@@ -5,7 +5,6 @@ defmodule Storage.GlobalSubscriberCache do
 
   alias App.Storage.Delegator
 
- 
   # Create ETS table on app start
 
   def table_name(eid), do: String.to_atom("blobal_subscriber_#{eid}")
@@ -18,17 +17,18 @@ defmodule Storage.GlobalSubscriberCache do
     :ok
   end
 
-  # Fetch and cache all subscribers for an owner
   def fetch_all_owner(owner_eid) do
     key = "#{owner_eid}"
     table = table_name(owner_eid)
-
     case Delegator.all_subscribers_by_user(owner_eid) do
       [] ->
         {:error}
       subscribers ->
-        # store whole list under one key
-        :ets.insert(table, {key, subscribers})
+        filtered =
+          Enum.filter(subscribers, fn sub ->
+            Map.get(sub, :awareness_status) == "allow"
+          end)
+        :ets.insert(table, {key, filtered})
         {:ok}
     end
   end
@@ -38,17 +38,31 @@ defmodule Storage.GlobalSubscriberCache do
     table = table_name(owner_eid)
     case :ets.lookup(table, key) do
       [{^key, subscribers}] ->
-        {:ok, subscribers}
-      [] ->
-        case Delegator.all_subscribers_by_user(owner_eid) do
-          nil ->
-            {:error, :not_found}
+      {:ok, subscribers}
+    [] ->
+      case Delegator.all_subscribers_by_user(owner_eid) do
+        nil ->
+          {:error, :not_found}
+        subscribers when is_list(subscribers) ->
+          # Filter subscribers by awareness_status = "allow"
+          allowed_subscribers =
+            Enum.filter(subscribers, fn s ->
+              Map.get(s, :awareness_status) == "allow"
+            end)
+          # Save only allowed into ETS
+          :ets.insert(table, {key, allowed_subscribers})
+          {:ok, allowed_subscribers}
+      end
+    end
+  end
 
-          subscribers when is_list(subscribers) ->
-            # Save in ETS for future lookups
-            :ets.insert(table, {key, subscribers})
-            {:ok, subscribers}
-        end
+  def test_etc(owner_eid) do
+    key = "#{owner_eid}"
+    table = table_name(owner_eid)
+  
+    case :ets.lookup(table, key) do
+      [{^key, subscribers}] -> {:ok, subscribers}
+      [] -> {:erorr}
     end
   end
 
@@ -66,4 +80,7 @@ end
 
 #Testing the data
 # Storage.GlobalSubscriberCache.get_all_owner("a@domain.com")
+# Storage.GlobalSubscriberCache.test_etc("d@domain.com")
+
+
 

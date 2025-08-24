@@ -54,15 +54,17 @@ defmodule Storage.LocalSubscriberCache do
     end
   end
 
+  # check the number of table created locally and delete all
+  # when next the child is coming, the child can still pull the details
   def delete(device_id) do
     table = table_name(device_id)
     case :ets.whereis(table) do
       :undefined -> :ok
-      tid when is_reference(tid) -> :ets.delete(table)
-      tid when is_integer(tid) -> :ets.delete(table)
+      tid -> :ets.delete(table)
     end
     :ok
   end
+
 end
 
 

@@ -36,3 +36,6 @@ defmodule App.Storage.Delegator do
   def delete_subscriber(subscriber_eid), do: subscriber_backend().delete(subscriber_eid)
   def all_subscribers_by_user(owner_eid), do: subscriber_backend().all_by_user(owner_eid)
 end
+
+
+#App.Storage.Delegator.all_subscribers_by_user("a@domain.com")

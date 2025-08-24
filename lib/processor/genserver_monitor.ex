@@ -71,7 +71,7 @@ defmodule Application.Monitor do
 
   @impl true
   def handle_cast({:monitor_terminate_child, {eid, device_id}}, state) do
-    App.Device.Cache.delete_only_ets(eid, device_id)
+    App.Device.Cache.delete(eid, device_id)
     case App.Device.Cache.all_by_owner(eid) do
       [] ->
         GlobalSubscriberCache.delete(eid)

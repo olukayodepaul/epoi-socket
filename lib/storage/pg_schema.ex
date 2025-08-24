@@ -53,12 +53,13 @@ defmodule App.PG.Subscriber do
     field :subscriber_eid, :string
     field :status, :string
     field :inserted_at, :naive_datetime
+    field :awareness_status, :string
   end
 
   # ✅ Changeset function
   def changeset(subscriber, attrs) do
     subscriber
-    |> cast(attrs, [:owner_eid, :subscriber_eid, :status, :inserted_at])
+    |> cast(attrs, [:owner_eid, :subscriber_eid, :status, :inserted_at, :awareness_status])
     |> validate_required([:owner_eid, :subscriber_eid, :status])
     |> validate_inclusion(:status, ["ONLINE", "BUSY", "DO_NOT_DISTURB", "OFFLINE"])
     |> unique_constraint([:owner_eid, :subscriber_eid], name: :subscriber_owner_eid_subscriber_eid_index)

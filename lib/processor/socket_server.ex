@@ -75,6 +75,7 @@ defmodule DartMessagingServer.Socket do
     end
   end
 
+  #terminate, send offline message.......
   def terminate(reason, _req, state) do
     Registries.TerminateHandler.handle_terminate(reason, state)
     :ok

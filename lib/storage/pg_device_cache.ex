@@ -69,7 +69,6 @@ defmodule App.Device.Cache do
     end
   end
 
-
   # Get device from ETS only
   def get(eid, device_id) do
     key = ets_key(eid, device_id)
@@ -79,16 +78,23 @@ defmodule App.Device.Cache do
     end
   end
 
-  # Delete device
   def delete(eid, device_id) do
-    key = ets_key(eid, device_id)
-    :ets.delete(@device_table, key)
-    Delegator.delete_device(device_id)
+    case :ets.whereis(@device_table) do
+    :undefined -> :ok  
+    tid -> 
+      key = ets_key(eid, device_id)
+      :ets.delete(@device_table, key)
+      Delegator.delete_device(device_id)
+    end
   end
 
   def delete_only_ets(eid, device_id) do
-    key = ets_key(eid, device_id)
-    :ets.delete(@device_table, key)
+    case :ets.whereis(@device_table) do
+    :undefined -> :ok  
+    tid -> 
+      key = ets_key(eid, device_id)
+      :ets.delete(@device_table, key)
+    end
   end
 
   # List all devices in ETS
@@ -112,3 +118,8 @@ end
 
 
 
+# App.Device.Cache.get("d@domain.com","ddddd1")
+# App.Device.Cache.get("c@domain.com","ccccc2")
+
+#device=ccccc2 owner=c@domain.com subscribed to 2 friends
+#device= owner= subscribed to 0 friends
