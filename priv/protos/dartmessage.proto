@@ -6,17 +6,11 @@ package dartmessaging;
 message Awareness {
   string from = 1;             // eid/device_id, e.g. "alice@domain.com/phone"
   int64 last_seen = 2;         // Unix timestamp
-  AwarenessStatus status = 3;  // online, away, dnd, offline
+  string status = 3;           // online, away, dnd, offline
   double latitude = 4;         // Optional: device latitude
   double longitude = 5;        // Optional: device longitude
 }
 
-enum AwarenessStatus {
-  ONLINE = 0;
-  AWAY = 1;
-  DND = 2;
-  OFFLINE = 3;
-}
 
 // Peer-specific presence (activities, short-lived states)
 message Presence {

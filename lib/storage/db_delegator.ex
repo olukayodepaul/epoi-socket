@@ -1,13 +1,16 @@
-defmodule App.Storage.Delegator do
+defmodule Storage.DbDelegator do
   @moduledoc """
   Unified storage module. Delegates to the configured backend
   based on the selected DB in the configuration.
   """
 
+  alias Storage.{PgDeviceImp,PgSubscriberImp}
+
+
   # Returns the backend module for devices
   defp device_backend do
     case ApplicationServer.Configuration.selected_db() do
-      :postgres -> App.Storage.Postgres.Device
+      :postgres -> PgDeviceImp
       # :mysql -> App.Storage.MySQL.Device
       # :mongo -> App.Storage.Mongo.Device
       other -> raise "Unsupported storage backend: #{inspect(other)}"
@@ -17,7 +20,7 @@ defmodule App.Storage.Delegator do
   # Returns the backend module for subscribers
   defp subscriber_backend do
     case ApplicationServer.Configuration.selected_db() do
-      :postgres -> App.Storage.Postgres.Subscriber
+      :postgres -> PgSubscriberImp
       # :mysql -> App.Storage.MySQL.Subscriber
       # :mongo -> App.Storage.Mongo.Subscriber
       other -> raise "Unsupported storage backend: #{inspect(other)}"

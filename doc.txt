@@ -1,12 +1,47 @@
-// A user's contacts + online metadata
-message PresenceSubscription {
-  from="eid/deviceId"                // Unique user identifier (the owner of this list)
-  type=
-  repeated string friends = 3;     // List of friend EIDs
-  bool online = 4;                 // Online status of the user
-  uint64 last_seen = 5;            // Unix timestamp of last seen
-}
+{:ok,
+ [
+   %App.PG.Subscriber{
+     __meta__: #Ecto.Schema.Metadata<:loaded, "subscriber">,
+     id: 1,
+     owner_eid: "a@domain.com",
+     subscriber_eid: "b@domain.com",
+     status: "active",
+     inserted_at: ~N[2025-08-21 14:17:29],
+     awareness_status: "allow"
+   },
+   %App.PG.Subscriber{
+     __meta__: #Ecto.Schema.Metadata<:loaded, "subscriber">,
+     id: 3,
+     owner_eid: "a@domain.com",
+     subscriber_eid: "c@domain.com",
+     status: "active",
+     inserted_at: ~N[2025-08-21 14:17:29],
+     awareness_status: "allow"
+   }
+ ]}
 
 
-//message
- from="eid/deviceId"
+
+10:06:24.726 [debug] Pong received, resetting missed_pongs
+iex(3)> Storage.GlobalSubscriberCache.get_presence("a@domain.com")
+{:ok,
+ %Strucs.Awareness{
+   owner_eid: "a@domain.com",
+   device_id: nil,
+   friends: ["b@domain.com", "c@domain.com"],
+   status: :ONLINE,
+   last_seen: 1756112394,
+   latitude: nil,
+   longitude: nil
+ }}
+iex(4)> Storage.LocalSubscriberCache.get_presence("a@domain.com", "aaaaa1")
+{:ok,
+ %Strucs.Awareness{
+   owner_eid: "a@domain.com",
+   device_id: "aaaaa1",
+   friends: ["b@domain.com", "c@domain.com"],
+   status: :ONLINE,
+   last_seen: 1756112394,
+   latitude: nil,
+   longitude: nil
+ }}

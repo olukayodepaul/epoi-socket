@@ -27,14 +27,6 @@ defmodule Storage.LocalSubscriberCache do
     :ok
   end
 
-  def get_presence(owner_eid, device_id) do
-    table = table_name(device_id)
-    case :ets.lookup(table, {:presence, owner_eid}) do
-      [{{:presence, ^owner_eid}, awareness}] -> {:ok, awareness}
-      [] -> {:error, :not_found}
-    end
-  end
-
   def get_all_presence(device_id) do
     table = table_name(device_id)
 
@@ -54,13 +46,21 @@ defmodule Storage.LocalSubscriberCache do
     end
   end
 
+  def get_presence(owner_eid, device_id) do
+    table = table_name(device_id)
+    case :ets.lookup(table, {:presence, owner_eid}) do
+      [{{:presence, ^owner_eid}, awareness}] -> {:ok, awareness}
+      [] -> {:error, :not_found}
+    end
+  end
+
   # check the number of table created locally and delete all
   # when next the child is coming, the child can still pull the details
   def delete(device_id) do
     table = table_name(device_id)
     case :ets.whereis(table) do
       :undefined -> :ok
-      tid -> :ets.delete(table)
+      _tid -> :ets.delete(table)
     end
     :ok
   end

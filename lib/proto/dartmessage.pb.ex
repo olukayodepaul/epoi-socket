@@ -1,14 +1,3 @@
-defmodule Dartmessaging.AwarenessStatus do
-  @moduledoc false
-
-  use Protobuf, enum: true, protoc_gen_elixir_version: "0.15.0", syntax: :proto3
-
-  field :ONLINE, 0
-  field :AWAY, 1
-  field :DND, 2
-  field :OFFLINE, 3
-end
-
 defmodule Dartmessaging.PresenceType do
   @moduledoc false
 
@@ -27,7 +16,7 @@ defmodule Dartmessaging.Awareness do
 
   field :from, 1, type: :string
   field :last_seen, 2, type: :int64, json_name: "lastSeen"
-  field :status, 3, type: Dartmessaging.AwarenessStatus, enum: true
+  field :status, 3, type: :string
   field :latitude, 4, type: :double
   field :longitude, 5, type: :double
 end

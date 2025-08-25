@@ -1,15 +1,15 @@
-defmodule App.Storage.Postgres.Subscriber do
+defmodule Storage.PgSubscriberImp do
   
-  @behaviour App.StorageIntf
-  alias App.PG.Subscriber
+  @behaviour Storage.AppStorageIntf
+  alias Storage.PgSubscriberSchema
   alias App.PgRepo, as: Repo
 
   import Ecto.Query
 
   # save with upsert on owner_eid + subscriber_eid
-  def save(%Subscriber{} = subscriber) do
+  def save(%PgSubscriberSchema{} = subscriber) do
     subscriber
-    |> Subscriber.changeset(%{})
+    |> PgSubscriberSchema.changeset(%{})
     |> Repo.insert(
         on_conflict: {:replace_all_except, [:id]},
         conflict_target: [:owner_eid, :subscriber_eid]
@@ -22,12 +22,12 @@ defmodule App.Storage.Postgres.Subscriber do
 
   # get by subscriber_eid
   def get(subscriber_eid) do
-    Repo.get_by(Subscriber, subscriber_eid: subscriber_eid)
+    Repo.get_by(PgSubscriberSchema, subscriber_eid: subscriber_eid)
   end
 
   # delete by subscriber_eid
   def delete(subscriber_eid) do
-    case Repo.get_by(Subscriber, subscriber_eid: subscriber_eid) do
+    case Repo.get_by(PgSubscriberSchema, subscriber_eid: subscriber_eid) do
       nil -> {:error, :not_found}
       subscriber -> 
         case Repo.delete(subscriber) do
@@ -39,7 +39,7 @@ defmodule App.Storage.Postgres.Subscriber do
 
   # get all subscribers for a given owner
   def all_by_user(owner_eid) do
-    Subscriber
+    PgSubscriberSchema
     |> where([s], s.owner_eid == ^owner_eid)
     |> Repo.all()
   end

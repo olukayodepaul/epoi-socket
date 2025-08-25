@@ -1,4 +1,4 @@
-defmodule App.PG.Devices do
+defmodule Storage.PgDevicesSchema do
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -40,7 +40,7 @@ defmodule App.PG.Devices do
 end
 
 
-defmodule App.PG.Subscriber do
+defmodule Storage.PgSubscriberSchema  do
   use Ecto.Schema
   import Ecto.Changeset
 

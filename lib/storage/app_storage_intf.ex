@@ -1,4 +1,4 @@
-defmodule App.StorageIntf do
+defmodule Storage.AppStorageIntf do
   @moduledoc """
   Defines the contract any database backend must implement
   to be usable by the system.
@@ -9,3 +9,6 @@ defmodule App.StorageIntf do
   @callback delete(device_id :: String.t()) :: :ok | {:error, term()}
   @callback all_by_user(eid :: String.t()) :: [struct()]
 end
+
+
+App.StorageIntf

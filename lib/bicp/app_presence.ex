@@ -10,6 +10,7 @@ defmodule Bicp.AppPresence do
 
   # Subscribe a device to all its friends
   def subscriptions(%Strucs.Awareness{owner_eid: owner_eid, device_id: device_id, friends: friends} = awareness) do
+    
     subs = Enum.map(friends, fn friend_eid -> %{subscriber_eid: friend_eid} end)
     LocalSubscriberCache.subscribers(device_id, owner_eid, subs)
 

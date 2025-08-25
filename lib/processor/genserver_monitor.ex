@@ -3,10 +3,12 @@ defmodule Application.Monitor do
   require Logger
   alias DartMessagingServer.DynamicSupervisor
   alias Util.RegistryHelper
-  alias App.PG.Devices
+  alias Storage.PgDevicesSchema
   alias App.AllRegistry
-  alias Storage.GlobalSubscriberCache
-
+  alias Storage.{GlobalSubscriberCache,PgDeviceCache}
+  alias Strucs.Awareness
+  alias Bicp.MonitorAppPresence 
+  
   @moduledoc """
   Mother process for a user. Holds state for devices, messages, etc.
   Survives socket termination.
@@ -19,9 +21,10 @@ defmodule Application.Monitor do
   @impl true
   def init(eid) do
     Logger.info("Monitor init for eid=#{eid}")
-    App.Device.Cache.init()
+    PgDeviceCache.init()
     GlobalSubscriberCache.init(eid)
     GlobalSubscriberCache.fetch_all_owner(eid)
+    GlobalSubscriberCache.get_all_owner(eid)
     {:ok, %{eid: eid, devices: %{}}}
   end
 
@@ -44,11 +47,11 @@ defmodule Application.Monitor do
   @impl true
   def handle_cast({:monitor_startup_status, %{eid: eid, device_id: device_id, ws_pid: ws_pid}}, state) do
     #send presence stattus to all the subscriber
-    case App.Device.Cache.fetch(device_id, ws_pid) do
+    case PgDeviceCache.fetch(device_id, ws_pid) do
       {:ok} -> :ok
       {:error} -> 
         now = DateTime.utc_now() |> DateTime.truncate(:second)
-        device = %Devices{
+        device = %PgDevicesSchema{
           device_id: device_id,
           eid: eid,
           last_seen: now,
@@ -63,16 +66,31 @@ defmodule Application.Monitor do
           supports_media: true,
           inserted_at: now
         }
-        App.Device.Cache.save(device)
+        PgDeviceCache.save(device)
     end
     AllRegistry.sent_subscriber(device_id, eid, GlobalSubscriberCache.get_all_owner(eid)) 
     {:noreply, state}
   end
 
+
   @impl true
   def handle_cast({:monitor_terminate_child, {eid, device_id}}, state) do
-    App.Device.Cache.delete(eid, device_id)
-    case App.Device.Cache.all_by_owner(eid) do
+    PgDeviceCache.delete_only_ets(eid, device_id)
+
+    {:ok, subscribers} = GlobalSubscriberCache.get_all_owner(eid)
+    friends = Enum.map(subscribers, & &1.subscriber_eid)
+
+    subscription = %Strucs.Awareness{
+      owner_eid: eid,
+      device_id: "00000000",
+      friends: friends,
+      status: "OFFLINE",
+      last_seen: DateTime.utc_now() |> DateTime.to_unix()
+    }
+
+    MonitorAppPresence.broadcast_awareness(subscription)
+
+    case PgDeviceCache.all_by_owner(eid) do
       [] ->
         GlobalSubscriberCache.delete(eid)
         {:stop, :normal, state}
@@ -83,16 +101,3 @@ defmodule Application.Monitor do
 
 end
 
-
-
-# pid = self()
-
-# # Save pid as string
-# pid_str = pid |> :erlang.pid_to_list() |> to_string()
-# IO.inspect(pid_str, label: "Stored string")
-
-# # Convert back
-# pid_back = pid_str |> String.to_charlist() |> :erlang.list_to_pid()
-# IO.inspect(pid_back, label: "Recovered pid")
-
-# IO.puts("Is same? #{pid == pid_back}") 

@@ -3,7 +3,7 @@ defmodule Storage.GlobalSubscriberCache do
   ETS-based cache for subscribers. Also syncs to the configured DB via App.Delegator.
   """
 
-  alias App.Storage.Delegator
+  alias Storage.DbDelegator
 
   # Create ETS table on app start
 
@@ -20,7 +20,7 @@ defmodule Storage.GlobalSubscriberCache do
   def fetch_all_owner(owner_eid) do
     key = "#{owner_eid}"
     table = table_name(owner_eid)
-    case Delegator.all_subscribers_by_user(owner_eid) do
+    case DbDelegator.all_subscribers_by_user(owner_eid) do
       [] ->
         {:error}
       subscribers ->
@@ -40,11 +40,11 @@ defmodule Storage.GlobalSubscriberCache do
       [{^key, subscribers}] ->
       {:ok, subscribers}
     [] ->
-      case Delegator.all_subscribers_by_user(owner_eid) do
+      case DbDelegator.all_subscribers_by_user(owner_eid) do
         nil ->
           {:error, :not_found}
         subscribers when is_list(subscribers) ->
-          # Filter subscribers by awareness_status = "allow"
+
           allowed_subscribers =
             Enum.filter(subscribers, fn s ->
               Map.get(s, :awareness_status) == "allow"
@@ -53,16 +53,6 @@ defmodule Storage.GlobalSubscriberCache do
           :ets.insert(table, {key, allowed_subscribers})
           {:ok, allowed_subscribers}
       end
-    end
-  end
-
-  def test_etc(owner_eid) do
-    key = "#{owner_eid}"
-    table = table_name(owner_eid)
-  
-    case :ets.lookup(table, key) do
-      [{^key, subscribers}] -> {:ok, subscribers}
-      [] -> {:erorr}
     end
   end
 
@@ -79,6 +69,8 @@ end
 
 
 #Testing the data
+# Storage.GlobalSubscriberCache.get_subscribers("a@domain.com")
+# Storage.GlobalSubscriberCache.get_presence("a@domain.com")
 # Storage.GlobalSubscriberCache.get_all_owner("a@domain.com")
 # Storage.GlobalSubscriberCache.test_etc("d@domain.com")
 
