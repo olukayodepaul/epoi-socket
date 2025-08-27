@@ -7,8 +7,9 @@ defmodule Util.PingPongHelper do
   alias  App.AllRegistry
 
   @max_missed_pongs Configuration.max_missed_pongs()
+  @max_counter_pongs Configuration.max_counter_pongs()
 
-  def handle_ping(%{missed_pongs: missed, eid: eid, device_id: device_id, ws_pid: ws_pid} = state) do
+  def handle_ping(%{missed_pongs: missed, counter_pongs: counter, eid: eid, device_id: device_id, ws_pid: ws_pid} = state) do
     if missed >= @max_missed_pongs do
       Logger.warning("Missed pong limit reached for #{device_id}, closing connection gracefully")
       AllRegistry.terminate_child_process({eid, device_id})
@@ -17,7 +18,15 @@ defmodule Util.PingPongHelper do
       Logger.debug("Sending ping to #{device_id}, missed=#{missed}")
       send(ws_pid, :send_ping)
       schedule_ping(device_id)
-      {:noreply, %{state | missed_pongs: missed + 1}}
+      new_counter =
+      if counter + 1 >= @max_counter_pongs do
+        AllRegistry.pong_counter_reset(device_id, eid)
+        0
+      else
+        counter + 1
+      end
+      
+      {:noreply, %{state | missed_pongs: missed + 1, counter_pongs: new_counter }}
     end
   end
 
@@ -30,7 +39,6 @@ defmodule Util.PingPongHelper do
     PingPong.schedule_ping_registry(device_id)
   end
 
-
   def handle_pong(device_id, state) do
     Logger.info("Received pong from client: #{device_id}")
     PingPong.handle_pong_registry(device_id)
@@ -38,3 +46,8 @@ defmodule Util.PingPongHelper do
   end
 
 end
+
+
+# Answer: Yes — receiving a pong means the client is alive/online.
+# Recommendation: Treat pong as confirmation of presence.
+# Next step: Reset missed_pongs on every pong to mark the device online.

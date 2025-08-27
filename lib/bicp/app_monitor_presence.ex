@@ -3,6 +3,7 @@ defmodule Bicp.MonitorAppPresence do
   Manages subscriptions and broadcasts for user awareness (global) and peer presence.
   """
   alias Phoenix.PubSub
+  alias ApplicationServer.Configuration 
   require Logger
 
   @pubsub ApplicationServer.PubSub
@@ -17,7 +18,7 @@ defmodule Bicp.MonitorAppPresence do
   end
 
   defp friend_subscription(owner_eid, device_id, friend_eid) do
-    topic = "presence:#{friend_eid}:status"
+    topic = "#{Configuration.awareness_topic()}:#{friend_eid}"
     Logger.info("[Awareness] device=#{device_id} owner=#{owner_eid} subscribing to #{topic}")
     :ok = PubSub.subscribe(@pubsub, topic)
     :ok
@@ -25,7 +26,7 @@ defmodule Bicp.MonitorAppPresence do
 
   # Broadcast awareness to all friends using the data already in memory
   def broadcast_awareness(%Strucs.Awareness{owner_eid: owner_eid} = awareness) do
-    topic = "presence:#{owner_eid}:status"
+    topic = "#{Configuration.awareness_topic()}:#{owner_eid}"
     Logger.info("[Awareness] Broadcasting owner=#{owner_eid} update to #{topic}")
 
     Phoenix.PubSub.broadcast(@pubsub, topic, {:awareness_update, awareness})

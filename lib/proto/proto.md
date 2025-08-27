@@ -81,9 +81,9 @@ JWT.generate_tokens(%{device_id: "bbbbb", eid: "b@domain.com", user_id: "1"})
 0A0C6140646F6D61696E2E636F6D120561616161611A0C6240646F6D61696E2E636F6D200128F39BA88F8C33
 
 user_contact = %Dartmessaging.Awareness{
-from: "alice@domain.com/phone",
+from: "b@domain.com/bbbbb1",
 last_seen: DateTime.utc_now() |> DateTime.to_unix(),
-status: AwarenessStatus.ONLINE,
+status: "ONLINE",
 latitude: 6.5244,
 longitude: 3.3792
 }

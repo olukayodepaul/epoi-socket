@@ -3,6 +3,7 @@ defmodule App.AllRegistry do
   require Logger
 
   def sent_subscriber(device_id, eid, subscriber) do
+    IO.inspect(3)
     {:ok, subscribers} = subscriber
     case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
       [{pid, _}] ->
@@ -14,6 +15,7 @@ defmodule App.AllRegistry do
   end
 
   def set_startup_status({eid, device_id, ws_pid}) do
+    IO.inspect(1)
     case Horde.Registry.lookup(UserRegistry, eid) do
       [{pid, _}] ->
         GenServer.cast(pid, {:monitor_startup_status, %{eid: eid, device_id: device_id, ws_pid: ws_pid }})
@@ -31,7 +33,7 @@ defmodule App.AllRegistry do
       :ok
     [] ->
       Logger.warning("No registry entry for #{device_id}, cannot maybe_start_mother")
-      {:error}
+      :error
     end
   end
 
@@ -42,13 +44,28 @@ defmodule App.AllRegistry do
         :ok
       [] ->
         Logger.warning("No registry entry for #{device_id}, cannot maybe_start_mother")
-        {:error}
+        :error
     end
   end
 
-  # def handle_awareness_response(sw_pid, awareness) do
-  #   send(sw_pid, {:socket_awareness_response, awareness})
-  # end
+  def send_subscriber_last_seen_to_monitor({owner_eid, eid, device_id, status}) do
+    case Horde.Registry.lookup(UserRegistry, eid) do
+      [{pid, _}] ->
+        GenServer.cast(pid, {:monitor_subscriber_last_seen, %{from: owner_eid, to: eid, device_id: device_id, status: status}})
+        :ok
+      [] ->
+        :error
+    end
+  end
 
+  def pong_counter_reset(device_id, eid) do
+    case Horde.Registry.lookup(UserRegistry, eid) do
+      [{pid, _}] ->
+        GenServer.cast(pid, {:pong_counter_reset, {eid, device_id}})
+        :ok
+      [] ->
+        :error
+    end
+  end
 
 end

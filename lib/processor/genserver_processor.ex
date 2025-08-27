@@ -1,12 +1,12 @@
 defmodule Application.Processor do
   use GenServer
   require Logger
-  alias Util.RegistryHelper
-  alias Util.PingPongHelper
+  alias Util.{RegistryHelper, PingPongHelper}
   alias App.AllRegistry
   alias Bicp.AppPresence
   alias Storage.LocalSubscriberCache
   alias Strucs.Awareness
+
 
   @moduledoc """
   Child session process representing a device.
@@ -23,8 +23,7 @@ defmodule Application.Processor do
     LocalSubscriberCache.init(device_id)
     AllRegistry.set_startup_status({eid, device_id, ws_pid})
     PingPongHelper.schedule_ping(device_id)
-
-    {:ok, %{missed_pongs: 0, eid: eid, device_id: device_id, ws_pid: ws_pid}}
+    {:ok, %{missed_pongs: 0, counter_pongs: 0, eid: eid, device_id: device_id, ws_pid: ws_pid}}
   end
 
   # Terminate device session
@@ -43,7 +42,8 @@ defmodule Application.Processor do
       device_id: device_id,
       friends: friends,
       status: "ONLINE",
-      last_seen: DateTime.utc_now() |> DateTime.to_unix()
+      last_seen: DateTime.utc_now() |> DateTime.to_unix(),
+
     }
     AppPresence.subscriptions(subscription)
     {:noreply, state}
@@ -61,19 +61,20 @@ defmodule Application.Processor do
   def handle_info(:send_ping, state), do: PingPongHelper.handle_ping(state)
   def handle_info(:received_pong, state), do: {:noreply, PingPongHelper.reset_pongs(state)}
 
-  def handle_info({:awareness_update, %Strucs.Awareness{} = awareness}, state) do
-      response = %Dartmessaging.Awareness{
-        from: "#{awareness.owner_eid}/#{awareness.device_id}",
-        last_seen: awareness.last_seen,
-        status: awareness.status,
-        latitude: awareness.latitude,
-        longitude: awareness.longitude
-      }
-
-      binary = Dartmessaging.Awareness.encode(response)
-      send(state.ws_pid, {:binary, binary})
+  def handle_info({:awareness_update, %Strucs.Awareness{} = awareness}, %{eid: eid} = state) do
+    if String.downcase(awareness.status) == "online" do
+        response = %Dartmessaging.Awareness{
+          from: "#{awareness.owner_eid}/#{awareness.device_id}",
+          last_seen: awareness.last_seen,
+          status: awareness.status,
+          latitude: awareness.latitude,
+          longitude: awareness.longitude
+        }
+        binary = Dartmessaging.Awareness.encode(response)
+        send(state.ws_pid, {:binary, binary})
+        AllRegistry.send_subscriber_last_seen_to_monitor({awareness.owner_eid, eid, awareness.device_id, awareness.status})
+      end
       {:noreply, state}
   end
-
 
 end

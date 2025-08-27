@@ -28,6 +28,7 @@ CREATE TABLE devices (
     last_activity TIMESTAMP,
     supports_notifications BOOLEAN DEFAULT FALSE,
     supports_media BOOLEAN DEFAULT FALSE,
+    status_source VARCHAR,
     inserted_at TIMESTAMP DEFAULT now()
 );
 

@@ -7,7 +7,7 @@ defmodule Storage.PgDevicesSchema do
     :id, :device_id, :eid, :last_seen, :ws_pid, :status,
     :last_received_version, :ip_address, :app_version,
     :os, :last_activity, :supports_notifications,
-    :supports_media, :inserted_at
+    :supports_media, :status_source, :inserted_at
   ]}
   schema "devices" do
     field :device_id, :string        # unique but not primary key
@@ -22,6 +22,7 @@ defmodule Storage.PgDevicesSchema do
     field :last_activity, :utc_datetime
     field :supports_notifications, :boolean, default: false
     field :supports_media, :boolean, default: false
+    field :status_source, :string
     field :inserted_at, :utc_datetime
   end
 
@@ -32,7 +33,7 @@ defmodule Storage.PgDevicesSchema do
       :device_id, :eid, :last_seen, :ws_pid, :status,
       :last_received_version, :ip_address, :app_version,
       :os, :last_activity, :supports_notifications,
-      :supports_media, :inserted_at
+      :supports_media, :status_source, :inserted_at
     ])
     |> validate_required([:device_id, :eid])
     |> unique_constraint(:device_id)  # enforce uniqueness at DB level

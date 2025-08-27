@@ -4,7 +4,9 @@ defmodule Bicp.AppPresence do
   """
   alias Phoenix.PubSub
   alias Storage.LocalSubscriberCache
+  alias ApplicationServer.Configuration 
   require Logger
+
 
   @pubsub ApplicationServer.PubSub
 
@@ -25,7 +27,7 @@ defmodule Bicp.AppPresence do
   end
 
   def friend_subscription(owner_eid, device_id, friend_eid) do
-    topic = "presence:#{friend_eid}:status"
+    topic = "#{Configuration.awareness_topic()}:#{friend_eid}"
     Logger.info("[Awareness] device=#{device_id} owner=#{owner_eid} subscribing to #{topic}")
     :ok = PubSub.subscribe(@pubsub, topic)
     :ok
@@ -34,7 +36,7 @@ defmodule Bicp.AppPresence do
   def broadcast_awareness(owner_eid, device_id) do
     case LocalSubscriberCache.get_presence(owner_eid, device_id) do
       {:ok, awareness} ->
-        topic = "presence:#{owner_eid}:status"
+        topic = "#{Configuration.awareness_topic()}:#{owner_eid}"
         Logger.info("[Awareness] Broadcasting owner=#{owner_eid} update to #{topic}")
         Phoenix.PubSub.broadcast(@pubsub, topic, {:awareness_update, awareness})
         :ok

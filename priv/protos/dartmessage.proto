@@ -4,13 +4,14 @@ package dartmessaging;
 
 // Global broadcast: user awareness (online/offline/away/dnd)
 message Awareness {
-  string from = 1;             // eid/device_id, e.g. "alice@domain.com/phone"
-  int64 last_seen = 2;         // Unix timestamp
-  string status = 3;           // online, away, dnd, offline
-  double latitude = 4;         // Optional: device latitude
-  double longitude = 5;        // Optional: device longitude
-}
+  string from = 1;                    // eid/device_identity_key, e.g. "alice@domain.com/phone"
+  int64 last_seen = 2;                // Unix timestamp
+  string status = 3;                  // online, away, dnd, offline
+  double latitude = 4;                // Optional: device latitude
+  double longitude = 5;               // Optional: device longitude
 
+}
+ // string device_identity_key = 6;    // unique per device
 
 // Peer-specific presence (activities, short-lived states)
 message Presence {
