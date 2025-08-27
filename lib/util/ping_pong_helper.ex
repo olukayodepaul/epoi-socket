@@ -13,7 +13,8 @@ defmodule Util.PingPongHelper do
     if missed >= @max_missed_pongs do
       Logger.warning("Missed pong limit reached for #{device_id}, closing connection gracefully")
       AllRegistry.terminate_child_process({eid, device_id})
-      {:stop, :normal, state}
+      new_state = reset_pongs(state) 
+      {:stop, :normal, new_state}
     else
       Logger.debug("Sending ping to #{device_id}, missed=#{missed}")
       send(ws_pid, :send_ping)

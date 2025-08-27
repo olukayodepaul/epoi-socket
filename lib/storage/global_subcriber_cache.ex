@@ -78,6 +78,35 @@ defmodule Storage.GlobalSubscriberCache do
     end
   end
 
+  # def get_aggregated_subscribers(owner_eid) do
+  #   table = table_name(owner_eid)
+
+  #   :ets.tab2list(table)
+  #   |> Enum.filter(fn
+  #     {key, value} ->
+  #       is_binary(key) and
+  #         String.starts_with?(key, "awareness#{owner_eid}_") and
+  #         # Only include aggregated keys with list of maps
+  #         is_list(value) and Enum.all?(value, &is_map/1)
+  #   end)
+  #   |> Enum.flat_map(fn {_, records} -> records end)
+  # end
+
+  def get_aggregated_subscribers(owner_eid) do
+    table = table_name(owner_eid)
+    prefix = "awareness#{owner_eid}_"
+
+    :ets.tab2list(table)
+    |> Enum.filter(fn
+      {key, value} ->
+        is_binary(key) and
+        String.starts_with?(key, prefix) and
+        is_list(value) and
+        Enum.all?(value, &is_map/1)  # ensure the list contains only maps
+    end)
+    |> Enum.flat_map(fn {_, records} -> records end)
+  end
+
 
   # # Delete ETS table for owner
   # def delete(eid) do
@@ -94,5 +123,12 @@ defmodule Storage.GlobalSubscriberCache do
 end
 
 
+# Storage.GlobalSubscriberCache.get_aggregated_subscribers("a@domain.com")
 # Storage.GlobalSubscriberCache.get_subscriber_devices("a@domain.com", "b@domain.com")
-# Storage.GlobalSubscriberCache.get_all_subscribers("a@domain.com", "b@domain.com", "bbbbb1")
+# Storage.GlobalSubscriberCache.get_subscriber_devices("a@domain.com", "b@domain.com")
+
+
+
+
+
+

@@ -80,7 +80,7 @@ defmodule Application.Monitor do
     {:noreply, state}
   end
 
-  def handle_cast({:pong_counter_reset, {eid, device_id}}, state) do
+  def handle_cast({:monotor_pong_counter, {eid, device_id}}, state) do
     PgDeviceCache.update_status(eid, device_id, "PONG")
     {:noreply, state}
   end

@@ -61,7 +61,7 @@ defmodule App.AllRegistry do
   def pong_counter_reset(device_id, eid) do
     case Horde.Registry.lookup(UserRegistry, eid) do
       [{pid, _}] ->
-        GenServer.cast(pid, {:pong_counter_reset, {eid, device_id}})
+        GenServer.cast(pid, {:monotor_pong_counter, {eid, device_id}})
         :ok
       [] ->
         :error
