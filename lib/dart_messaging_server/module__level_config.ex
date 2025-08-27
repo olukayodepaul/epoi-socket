@@ -14,7 +14,7 @@ defmodule ApplicationServer.Configuration do
   def idle_timeout, do: get(:server)[:idle_timeout]
   def selected_db, do: get(:server)[:selected_db]
   def awareness_topic, do: get(:server)[:awareness_topic]
-  def max_counter_pongs, do: get(:server)[:max_counter_pongs]
+  def max_pong_counter, do: get(:server)[:max_pong_counter]
   
   defp get(key), do: Application.get_env(@app, key, [])
 end

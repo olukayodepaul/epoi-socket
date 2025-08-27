@@ -7,9 +7,9 @@ defmodule Util.PingPongHelper do
   alias  App.AllRegistry
 
   @max_missed_pongs Configuration.max_missed_pongs()
-  @max_counter_pongs Configuration.max_counter_pongs()
+  @max_pong_counter Configuration.max_pong_counter()
 
-  def handle_ping(%{missed_pongs: missed, counter_pongs: counter, eid: eid, device_id: device_id, ws_pid: ws_pid} = state) do
+  def handle_ping(%{missed_pongs: missed, pong_counter: counter, eid: eid, device_id: device_id, ws_pid: ws_pid} = state) do
     if missed >= @max_missed_pongs do
       Logger.warning("Missed pong limit reached for #{device_id}, closing connection gracefully")
       AllRegistry.terminate_child_process({eid, device_id})
@@ -19,14 +19,14 @@ defmodule Util.PingPongHelper do
       send(ws_pid, :send_ping)
       schedule_ping(device_id)
       new_counter =
-      if counter + 1 >= @max_counter_pongs do
+      if counter + 1 >= @max_pong_counter do
         AllRegistry.pong_counter_reset(device_id, eid)
         0
       else
         counter + 1
       end
       
-      {:noreply, %{state | missed_pongs: missed + 1, counter_pongs: new_counter }}
+      {:noreply, %{state | missed_pongs: missed + 1, pong_counter: new_counter }}
     end
   end
 
