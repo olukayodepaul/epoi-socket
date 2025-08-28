@@ -50,7 +50,7 @@ defmodule Storage.PgDeviceCache do
               | ws_pid: pid_str,
                 last_seen: now,
                 status: "ONLINE",
-                status_source: "SYSTEM"
+                status_source: "LOGIN"
 
             }
 
@@ -67,7 +67,7 @@ defmodule Storage.PgDeviceCache do
           | ws_pid: pid_str,
             last_seen: now,
             status: "ONLINE",
-            status_source: "SYSTEM"
+            status_source: "LOGIN"
         }
 
         DbDelegator.save_device(updated_device)

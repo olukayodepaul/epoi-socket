@@ -12,8 +12,6 @@ CREATE INDEX idx_subscriber_owner ON subscriber (owner_eid);
 CREATE INDEX idx_subscriber_member ON subscriber (subscriber_eid);
 CREATE INDEX idx_subscriber_status ON subscriber (status);
 
-
-
 CREATE TABLE devices (
     id SERIAL PRIMARY KEY,                 -- auto-increment id
     device_id VARCHAR UNIQUE NOT NULL,     -- unique device identifier
@@ -29,6 +27,7 @@ CREATE TABLE devices (
     supports_notifications BOOLEAN DEFAULT FALSE,
     supports_media BOOLEAN DEFAULT FALSE,
     status_source VARCHAR,
+    awareness_intention INTEGER DEFAULT 0,
     inserted_at TIMESTAMP DEFAULT now()
 );
 

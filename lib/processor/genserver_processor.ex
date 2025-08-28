@@ -23,7 +23,7 @@ defmodule Application.Processor do
     LocalSubscriberCache.init(device_id)
     AllRegistry.set_startup_status({eid, device_id, ws_pid})
     PingPongHelper.schedule_ping(device_id)
-    {:ok, %{missed_pongs: 0, pong_counter: 0, eid: eid, device_id: device_id, ws_pid: ws_pid}}
+    {:ok, %{missed_pongs: 0, pong_counter: 0, timer: DateTime.utc_now(), eid: eid, device_id: device_id, ws_pid: ws_pid}}
   end
 
   # Terminate device session

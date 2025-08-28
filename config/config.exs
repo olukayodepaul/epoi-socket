@@ -13,7 +13,8 @@ config :dart_messaging_server, :server,
   idle_timeout: 60_000,
   selected_db: :postgres, #redis #mysql #mongodb
   awareness_topic: "awareness",
-  max_pong_counter: 3
+  max_pong_counter: 3,
+  max_allowed_delay: 60
 
 config :dart_messaging_server,
   ecto_repos: [App.PgRepo]

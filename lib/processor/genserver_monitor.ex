@@ -63,7 +63,8 @@ defmodule Application.Monitor do
           last_activity: now,
           supports_notifications: true,
           supports_media: true,
-          status_source: "system",
+          status_source: "LOGIN",
+          awareness_intention: 0,
           inserted_at: now
         }
         PgDeviceCache.save(device, eid)
@@ -87,7 +88,7 @@ defmodule Application.Monitor do
 
   def handle_cast({:monitor_terminate_child, {eid, device_id}}, state) do
 
-    PgDeviceCache.update_status(eid, device_id, "SYSTEM", "OFFLINE")
+    PgDeviceCache.update_status(eid, device_id, "LOGOUT", "OFFLINE")
     # PgDeviceCache.delete_only_ets(device_id, eid)
 
 

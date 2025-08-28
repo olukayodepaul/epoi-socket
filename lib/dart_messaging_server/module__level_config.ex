@@ -15,6 +15,7 @@ defmodule ApplicationServer.Configuration do
   def selected_db, do: get(:server)[:selected_db]
   def awareness_topic, do: get(:server)[:awareness_topic]
   def max_pong_counter, do: get(:server)[:max_pong_counter]
+  def max_allowed_delay, do: get(:server)[:max_allowed_delay]
   
   defp get(key), do: Application.get_env(@app, key, [])
 end

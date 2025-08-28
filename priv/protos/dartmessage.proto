@@ -9,7 +9,7 @@ message Awareness {
   string status = 3;                  // online, away, dnd, offline
   double latitude = 4;                // Optional: device latitude
   double longitude = 5;               // Optional: device longitude
-
+  int32 awareness_intention = 6;      // 1 = network/device, 2 = owner/user override
 }
  // string device_identity_key = 6;    // unique per device
 
