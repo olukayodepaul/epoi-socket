@@ -6,6 +6,7 @@ defmodule DartMessagingServer.Socket do
 
   alias Security.TokenVerifier
   alias Util.{ConnectionsHelper, TokenRevoked, PingPongHelper}
+  alias Registries.TerminateHandler
   # alias App.AllRegistry
 
   def init(req, _state) do
@@ -77,7 +78,7 @@ defmodule DartMessagingServer.Socket do
 
   #terminate, send offline message.......
   def terminate(reason, _req, state) do
-    Registries.TerminateHandler.handle_terminate(reason, state)
+    TerminateHandler.handle_terminate(reason, state)
     :ok
   end
 

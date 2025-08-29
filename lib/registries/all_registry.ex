@@ -14,6 +14,8 @@ defmodule App.AllRegistry do
     end
   end
 
+
+
   def set_startup_status({eid, device_id, ws_pid}) do
     IO.inspect(1)
     case Horde.Registry.lookup(UserRegistry, eid) do
@@ -48,20 +50,20 @@ defmodule App.AllRegistry do
     end
   end
 
-  def send_subscriber_last_seen_to_monitor({owner_eid, eid, device_id, status}) do
+  def push_subscriber_update_to_monitor({owner_eid, eid, device_id, status}) do
     case Horde.Registry.lookup(UserRegistry, eid) do
       [{pid, _}] ->
-        GenServer.cast(pid, {:monitor_subscriber_last_seen, %{from: owner_eid, to: eid, device_id: device_id, status: status}})
+        GenServer.cast(pid, {:push_subscriber_update_to_monitor, %{from: owner_eid, to: eid, device_id: device_id, status: status}})
         :ok
       [] ->
         :error
     end
   end
 
-  def pong_counter_reset(device_id, eid) do
+  def pong_counter_reset(device_id, eid, status \\ "ONLINE") do
     case Horde.Registry.lookup(UserRegistry, eid) do
       [{pid, _}] ->
-        GenServer.cast(pid, {:monotor_pong_counter, {eid, device_id}})
+        GenServer.cast(pid, {:monitor_pong_counter, {eid, device_id, status}})
         :ok
       [] ->
         :error

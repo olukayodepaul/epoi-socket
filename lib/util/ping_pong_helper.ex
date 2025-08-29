@@ -3,7 +3,7 @@ defmodule Util.PingPongHelper do
   
   alias Registries.PingPong
   alias ApplicationServer.Configuration
-  alias  App.AllRegistry
+  alias App.AllRegistry
 
   @max_missed_pongs Configuration.max_missed_pongs()
   @max_pong_counter Configuration.max_pong_counter()
@@ -11,11 +11,14 @@ defmodule Util.PingPongHelper do
 
   def handle_ping(%{missed_pongs: missed, pong_counter: counter, timer: timer, eid: eid, device_id: device_id, ws_pid: ws_pid} = state) do
 
+      #add idle time for terminating. if not pong for sometime, then terminate
+
+
       if DateTime.diff(DateTime.utc_now(), timer) > @max_allowed_delay do
 
         send(ws_pid, :send_ping)
         schedule_ping(device_id)
-        AllRegistry.terminate_child_process({eid, device_id})
+        AllRegistry.pong_counter_reset(device_id, eid) 
         {:noreply, %{state | missed_pongs: O, pong_counter: 0, timer: DateTime.utc_now() }}
 
       else
@@ -23,9 +26,9 @@ defmodule Util.PingPongHelper do
         if missed >= @max_missed_pongs do
 
           Logger.warning("Missed pong limit reached for #{device_id}, closing connection gracefully")
-          AllRegistry.terminate_child_process({eid, device_id})
-          new_state = reset_pongs(state) 
-          {:stop, :normal, new_state}
+          # AllRegistry.terminate_child_process({eid, device_id})
+          AllRegistry.pong_counter_reset(device_id, eid, "OFFLINE")
+          {:noreply, %{state | missed_pongs: O, pong_counter: 0, timer: DateTime.utc_now() }}
 
         else
 

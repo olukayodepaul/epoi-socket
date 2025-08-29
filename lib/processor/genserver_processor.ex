@@ -28,7 +28,7 @@ defmodule Application.Processor do
 
   # Terminate device session
   @impl true
-  def handle_cast(:processor_terminate_device, %{device_id: device_id, eid: eid} = state) do
+  def handle_cast({:processor_terminate_device, {device_id, eid}}, state) do
     AllRegistry.terminate_child_process({eid, device_id})
     :ets.delete(LocalSubscriberCache.table_name(device_id)) # put this in the right file
     {:stop, :normal, state}
@@ -72,7 +72,7 @@ defmodule Application.Processor do
         }
         binary = Dartmessaging.Awareness.encode(response)
         send(state.ws_pid, {:binary, binary})
-        AllRegistry.send_subscriber_last_seen_to_monitor({awareness.owner_eid, eid, awareness.device_id, awareness.status})
+        AllRegistry.push_subscriber_update_to_monitor({awareness.owner_eid, eid, awareness.device_id, awareness.status})
       end
       {:noreply, state}
   end

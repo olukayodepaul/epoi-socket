@@ -119,6 +119,9 @@ defmodule SubscribersAggregatorTunnel do
   end
 
   def fetch_stale_list(owner_eid) do
+
+    SubscribersAggregatorTunnel.cleanup_stale_devices(owner_eid)
+
     stale_table = String.to_atom("stale_subscriber_#{owner_eid}")
 
     if :ets.whereis(stale_table) == :undefined do

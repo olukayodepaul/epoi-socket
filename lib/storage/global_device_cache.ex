@@ -161,5 +161,5 @@ end
 # Storage.PgDeviceCache.all("a@domain.com")
 # Storage.PgDeviceCache.all("b@domain.com")
 # Storage.PgDeviceCache.all_by_owner("a@domain.com")
-# Storage.PgDeviceCache.update_version("a@domain.com", "aaaaa1", 35, "offline")
+# Storage.PgDeviceCache.update_status("a@domain.com", "aaaaa1", "PONG", "OFFLINE")
 # Storage.PgDeviceCache.awareness("a@domain.com")
