@@ -15,14 +15,17 @@ defmodule DevicePresenceAggregator do
   alias Storage.PgDeviceCache
 
   @stale_threshold_seconds 60 * 2
-  @force_change_seconds 60 * 3   # 5 minutes
-  @state_table :device_presence_state
+  @force_change_seconds 60 * 3   # 3 minutes
 
   # --------- ETS Initialization ---------
-  def init_state_table do
-    if :ets.whereis(@state_table) == :undefined do
-      :ets.new(@state_table, [:set, :public, :named_table, read_concurrency: true])
+  defp state_table_name(eid), do: String.to_atom("device_dat_#{eid}")
+
+  defp init_state_table(eid) do
+    table = state_table_name(eid)
+    if :ets.whereis(table) == :undefined do
+      :ets.new(table, [:set, :public, :named_table, read_concurrency: true])
     end
+    table
   end
 
   # --------- Internal helpers ---------
@@ -60,8 +63,8 @@ defmodule DevicePresenceAggregator do
     |> Enum.sort()
   end
 
-  defp update_state(owner_eid, status, devices, now) do
-    :ets.insert(@state_table, {
+  defp update_state(table, owner_eid, status, devices, now) do
+    :ets.insert(table, {
       owner_eid,
       %{
         user_status: status,
@@ -72,15 +75,15 @@ defmodule DevicePresenceAggregator do
     })
   end
 
-  defp update_last_changed(owner_eid, prev_state, now) do
-    :ets.insert(@state_table, {
+  defp update_last_changed(table, owner_eid, prev_state, now) do
+    :ets.insert(table, {
       owner_eid,
       %{prev_state | last_change_at: now, last_seen: now}
     })
   end
 
-  defp bump_idle_time(owner_eid, prev_state, now) do
-    :ets.insert(@state_table, {
+  defp bump_idle_time(table, owner_eid, prev_state, now) do
+    :ets.insert(table, {
       owner_eid,
       %{prev_state | last_seen: now}
     })
@@ -88,24 +91,14 @@ defmodule DevicePresenceAggregator do
 
   # --------- Public API ---------
 
-  @doc """
-  Computes current presence and compares with stored state.
-
-  Returns:
-    {:changed, user_status, online_devices} | {:unchanged, user_status, online_devices}
-
-  Change is emitted if the *status* changes, the *device set* changes,
-  or the state has been idle longer than `@force_change_seconds`.
-  """
   def track_state_change(owner_eid) do
-    init_state_table()
+    table = init_state_table(owner_eid)
     now = DateTime.utc_now()
     {user_status, online_devices} = user_status_with_devices(owner_eid)
 
-    case :ets.lookup(@state_table, owner_eid) do
+    case :ets.lookup(table, owner_eid) do
       [] ->
-        # First observation: store and report changed
-        update_state(owner_eid, user_status, online_devices, now)
+        update_state(table, owner_eid, user_status, online_devices, now)
         {:changed, user_status, online_devices}
 
       [{^owner_eid, prev_state}] ->
@@ -116,27 +109,22 @@ defmodule DevicePresenceAggregator do
         idle_too_long? = DateTime.diff(now, prev_state.last_change_at) >= @force_change_seconds
 
         cond do
-          # Status flip => changed
           prev_status != user_status ->
-            update_state(owner_eid, user_status, online_devices, now)
+            update_state(table, owner_eid, user_status, online_devices, now)
             {:changed, user_status, online_devices}
 
-          # Same status; if online, only treat as changed if device set changed
           user_status == :online and prev_ids != curr_ids ->
-            update_state(owner_eid, user_status, online_devices, now)
+            update_state(table, owner_eid, user_status, online_devices, now)
             {:changed, user_status, online_devices}
 
-          # Force heartbeat change if idle too long
           idle_too_long? ->
-            update_last_changed(owner_eid, prev_state, now)
+            update_last_changed(table, owner_eid, prev_state, now)
             {:changed, prev_status, prev_state.online_devices}
 
-          # No real change => bump idle time only
           true ->
-            bump_idle_time(owner_eid, prev_state, now)
+            bump_idle_time(table, owner_eid, prev_state, now)
             {:unchanged, user_status, online_devices}
         end
     end
   end
-  
 end

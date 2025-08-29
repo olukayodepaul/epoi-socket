@@ -4,15 +4,10 @@ defmodule Application.Monitor do
 
   alias DartMessagingServer.DynamicSupervisor
   alias Util.RegistryHelper
-  alias App.AllRegistry
+  # alias App.AllRegistry
   alias Storage.{GlobalSubscriberCache, PgDeviceCache, PgDevicesSchema}
   alias Bicp.MonitorAppPresence
-  alias DevicePresenceAggregator
-
-  @moduledoc """
-  Mother process for a user. Holds state for devices, messages, etc.
-  Survives socket termination and monitors device presence.
-  """
+  # alias DevicePresenceAggregator
 
 
   def start_link(eid) do
@@ -24,7 +19,7 @@ defmodule Application.Monitor do
     Logger.info("Monitor init for eid=#{eid}")
     PgDeviceCache.init(eid)
     GlobalSubscriberCache.init(eid)
-
+    MonitorAppPresence.subscribe_to_friends(eid)
     {:ok, %{eid: eid, devices: %{}}}
   end
 
@@ -44,13 +39,11 @@ defmodule Application.Monitor do
     end
   end
 
-  # Device registration
+  # client registration
+  # send notification to all subscribers
   @impl true
-  def handle_cast({:monitor_startup_status, %{eid: eid, device_id: device_id, ws_pid: ws_pid}}, state) do
-
-    IO.inspect("monitor_startup_status")
+  def handle_cast({:m_setup_client_init, %{eid: eid, device_id: device_id, ws_pid: ws_pid}}, state) do
     now = DateTime.utc_now() |> DateTime.truncate(:second)
-
     case PgDeviceCache.fetch(device_id, eid, ws_pid) do
       {:ok} -> :ok
       {:error} ->
@@ -73,40 +66,22 @@ defmodule Application.Monitor do
         }
         PgDeviceCache.save(device, eid)
     end
-
-    AllRegistry.sent_subscriber(device_id, eid, GlobalSubscriberCache.fetch_subscriber_by_owners_eid(eid))
+    MonitorAppPresence.broadcast_awareness(eid, :ONLINE)
     {:noreply, state}
   end
 
   @impl true
-  def handle_cast({:push_subscriber_update_to_monitor, %{from: from, to: to, device_id: device_id, status: status}}, state) do
-    GlobalSubscriberCache.put_subscribers(to, from, device_id, status)
+  def handle_cast({:send_pong, {eid, device_id, status}}, state) do
+    IO.inspect({eid, device_id, status})
+    # track_state_change(eid, device_id)
+    # PgDeviceCache.update_status(eid, device_id, "PONG", status)
     {:noreply, state}
   end
 
   @impl true
-  def handle_cast({:monitor_pong_counter, {eid, device_id, status}}, state) do
-    track_state_change(eid)
-    PgDeviceCache.update_status(eid, device_id, "PONG", status)
+  def handle_info({:awareness_update, %Strucs.Awareness{} = awareness}, %{eid: eid} = state) do
+    MonitorAppPresence.fan_out_to_children(eid, awareness)
     {:noreply, state}
-  end
-
-  @impl true
-  def handle_cast({:monitor_terminate_child, {eid, device_id}}, state) do
-    PgDeviceCache.update_status(eid, device_id, "LOGOUT", "OFFLINE")
-    track_state_change(eid)
-    {:noreply, state}
-  end
-
-  def track_state_change(owner_eid) do
-    case DevicePresenceAggregator.track_state_change(owner_eid) do
-      {:changed, user_status, online_devices} -> 
-        IO.inspect({:changed, user_status, online_devices})
-        :ok
-      {:unchanged, _user_status, _online_devices} -> 
-        IO.inspect({:unchanged})
-        :ok
-    end
   end
 
   # Catch-all for unexpected messages
@@ -116,7 +91,5 @@ defmodule Application.Monitor do
     {:noreply, state}
   end
 
-
 end
-
 

@@ -87,29 +87,6 @@ defmodule Storage.PgDeviceCache do
     end
   end
 
-  def delete(eid, device_id) do
-    table = table_name(eid)
-    key = ets_key(eid, device_id)
-    case :ets.whereis(table) do
-      :undefined ->
-        :ok
-      _tid ->
-        :ets.delete(table, key)
-        _ = DbDelegator.delete_device(device_id)
-        :ok
-    end
-  end
-
-  def delete_only_ets(device_id, eid) do
-    table = table_name(eid)
-    case :ets.whereis(table) do
-    :undefined -> :ok  
-    _tid -> 
-      key = ets_key(eid, device_id)
-      :ets.delete(table, key)
-    end
-  end
-
   # List all devices in ETS
   def all(eid) do
     table = table_name(eid)
@@ -117,35 +94,60 @@ defmodule Storage.PgDeviceCache do
     |> Enum.map(fn {_key, device} -> device end)
   end
 
-  # List devices by owner (eid)
-  def all_by_owner(eid) do
-    all(eid)
-    |> Enum.filter(&(&1.eid == eid))
-  end
+  # def delete(eid, device_id) do
+  #   table = table_name(eid)
+  #   key = ets_key(eid, device_id)
+  #   case :ets.whereis(table) do
+  #     :undefined ->
+  #       :ok
+  #     _tid ->
+  #       :ets.delete(table, key)
+  #       _ = DbDelegator.delete_device(device_id)
+  #       :ok
+  #   end
+  # end
 
-  # Update device status and last_seen//pong can also use this function
-  def update_status(eid, device_id, status_source, status  \\ @online) do
+  # def delete_only_ets(device_id, eid) do
+  #   table = table_name(eid)
+  #   case :ets.whereis(table) do
+  #   :undefined -> :ok  
+  #   _tid -> 
+  #     key = ets_key(eid, device_id)
+  #     :ets.delete(table, key)
+  #   end
+  # end
+
+
+
+  # # List devices by owner (eid)
+  # def all_by_owner(eid) do
+  #   all(eid)
+  #   |> Enum.filter(&(&1.eid == eid))
+  # end
+
+  # # Update device status and last_seen//pong can also use this function
+  # def update_status(eid, device_id, status_source, status  \\ @online) do
   
-    table = table_name(eid)
-    key = ets_key(eid, device_id)
+  #   table = table_name(eid)
+  #   key = ets_key(eid, device_id)
 
-    case :ets.lookup(table, key) do
-      [{^key, device}] ->
-        updated_device = %PgDevicesSchema{
-          device
-          | status: status,
-            status_source: status_source,
-            last_seen: DateTime.utc_now() |> DateTime.truncate(:second)
-        }
+  #   case :ets.lookup(table, key) do
+  #     [{^key, device}] ->
+  #       updated_device = %PgDevicesSchema{
+  #         device
+  #         | status: status,
+  #           status_source: status_source,
+  #           last_seen: DateTime.utc_now() |> DateTime.truncate(:second)
+  #       }
 
-        :ets.insert(table, {key, updated_device})
-        Task.start(fn -> DbDelegator.save_device(updated_device) end)
-        {:ok, updated_device}
+  #       :ets.insert(table, {key, updated_device})
+  #       Task.start(fn -> DbDelegator.save_device(updated_device) end)
+  #       {:ok, updated_device}
 
-      [] ->
-        {:error, :not_found}
-    end
-  end
+  #     [] ->
+  #       {:error, :not_found}
+  #   end
+  # end
 
   # Helper to build ETS key
   defp ets_key(%PgDevicesSchema{eid: eid, device_id: device_id}), do: "#{eid}:#{device_id}"
@@ -159,7 +161,7 @@ end
 
 
 # Storage.PgDeviceCache.all("a@domain.com")
-# Storage.PgDeviceCache.all("b@domain.com")
+# Storage.PgDeviceCache.all("a@domain.com")
 # Storage.PgDeviceCache.all_by_owner("a@domain.com")
 # Storage.PgDeviceCache.update_status("a@domain.com", "aaaaa1", "PONG", "OFFLINE")
 # Storage.PgDeviceCache.awareness("a@domain.com")

@@ -36,14 +36,16 @@ defmodule DartMessagingServer.Socket do
     {:reply, :ping, state}
   end
 
+  def websocket_handle(:pong, {:new,{_eid, device_id}} = state) do
+    PingPongHelper.handle_pong(device_id, state)
+  end
+
   def websocket_info({:binary, binary}, state) do
     Logger.info("Sending awareness frame to client")
     {:reply, {:binary, binary}, state}
   end
 
-  def websocket_handle(:pong, {:new,{_eid, device_id}} = state) do
-    PingPongHelper.handle_pong(device_id, state)
-  end
+
 
   def websocket_handle({:binary, data},  {:new,{_eid, device_id}} = state) do
     if data == <<>> do

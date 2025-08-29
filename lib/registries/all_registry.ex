@@ -1,30 +1,38 @@
 defmodule App.AllRegistry do
 
   require Logger
+  alias ApplicationServer.Configuration
 
-  def sent_subscriber(device_id, eid, subscriber) do
-    IO.inspect(3)
-    {:ok, subscribers} = subscriber
-    case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
-      [{pid, _}] ->
-        GenServer.cast(pid, {:processor_get_all_subcriber, {device_id, eid, subscribers}})
-        :ok
-      [] ->
-        {:error}
-    end
-  end
-
-
-
-  def set_startup_status({eid, device_id, ws_pid}) do
-    IO.inspect(1)
+  
+  @ping_interval Configuration.ping_interval()
+  
+  def setup_client_init({eid, device_id, ws_pid}) do
     case Horde.Registry.lookup(UserRegistry, eid) do
       [{pid, _}] ->
-        GenServer.cast(pid, {:monitor_startup_status, %{eid: eid, device_id: device_id, ws_pid: ws_pid }})
+        GenServer.cast(pid, {:m_setup_client_init, %{eid: eid, device_id: device_id, ws_pid: ws_pid }})
         :ok
       []->
         Logger.warning("No registry entry for #{device_id}, cannot maybe_start_mother")
         {:error}
+    end
+  end
+
+  def schedule_ping_registry(device_id) do
+    case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
+      [{pid, _}] -> 
+        Process.send_after(pid, :send_ping, @ping_interval)
+      [] -> 
+        Logger.warning("No registry entry for #{device_id}, cannot schedule ping")
+    end
+  end
+
+  def handle_pong_registry(device_id) do
+    case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
+      [{pid, _}] ->
+        Logger.info("Forwarding pong to Application.Processor for #{device_id}")
+        GenServer.cast(pid, :received_pong)
+      [] ->
+        Logger.warning("No Application.Processor GenServer found for pong: #{device_id}")
     end
   end
 
@@ -39,35 +47,26 @@ defmodule App.AllRegistry do
     end
   end
 
-  def handle_awareness(awareness, device_id) do
+  def send_pong(device_id, eid, status \\ "ONLINE") do
+    case Horde.Registry.lookup(UserRegistry, eid) do
+      [{pid, _}] ->
+        GenServer.cast(pid, {:send_pong, {eid, device_id, status}})
+        :ok
+      [] ->
+        :error
+    end
+  end
+
+  def fan_out_to_children(device_id, eid, %Strucs.Awareness{} = awareness) do
     case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
       [{pid, _}] ->
-        GenServer.cast(pid, {:processor_awareness, awareness})
+        GenServer.cast(pid, {:fan_out_to_children, {device_id, eid, awareness}})
         :ok
       [] ->
-        Logger.warning("No registry entry for #{device_id}, cannot maybe_start_mother")
+        Logger.warning("No registry entry for #{eid}, cannot maybe_start_mother")
         :error
     end
   end
 
-  def push_subscriber_update_to_monitor({owner_eid, eid, device_id, status}) do
-    case Horde.Registry.lookup(UserRegistry, eid) do
-      [{pid, _}] ->
-        GenServer.cast(pid, {:push_subscriber_update_to_monitor, %{from: owner_eid, to: eid, device_id: device_id, status: status}})
-        :ok
-      [] ->
-        :error
-    end
-  end
-
-  def pong_counter_reset(device_id, eid, status \\ "ONLINE") do
-    case Horde.Registry.lookup(UserRegistry, eid) do
-      [{pid, _}] ->
-        GenServer.cast(pid, {:monitor_pong_counter, {eid, device_id, status}})
-        :ok
-      [] ->
-        :error
-    end
-  end
 
 end
