@@ -9,7 +9,6 @@ defmodule Application.Monitor do
   alias Bicp.MonitorAppPresence
   # alias DevicePresenceAggregator
 
-
   def start_link(eid) do
     GenServer.start(__MODULE__, eid, name: RegistryHelper.via_monitor_registry(eid))
   end
@@ -20,6 +19,7 @@ defmodule Application.Monitor do
     PgDeviceCache.init(eid)
     GlobalSubscriberCache.init(eid)
     MonitorAppPresence.subscribe_to_friends(eid)
+    MonitorAppPresence.user_level_subscribtion(eid)
     {:ok, %{eid: eid, devices: %{}}}
   end
 
@@ -61,12 +61,14 @@ defmodule Application.Monitor do
           supports_notifications: true,
           supports_media: true,
           status_source: "LOGIN",
-          awareness_intention: 0,
+          awareness_intention: 1,
           inserted_at: now
         }
+        #using what is inserte
         PgDeviceCache.save(device, eid)
     end
-    MonitorAppPresence.broadcast_awareness(eid, :ONLINE)
+    device = PgDeviceCache.get(eid, device_id)
+    MonitorAppPresence.broadcast_awareness(device.eid, device.awareness_intention)
     {:noreply, state}
   end
 
@@ -80,7 +82,12 @@ defmodule Application.Monitor do
 
   @impl true
   def handle_info({:awareness_update, %Strucs.Awareness{} = awareness}, %{eid: eid} = state) do
+    IO.inspect(awareness)
     MonitorAppPresence.fan_out_to_children(eid, awareness)
+    {:noreply, state}
+  end
+
+  def handle_info({:direct_communication, message}, state) do
     {:noreply, state}
   end
 

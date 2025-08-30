@@ -29,6 +29,16 @@ defmodule Bicp.MonitorAppPresence do
     table
   end
 
+  def user_level_subscribtion(eid) do
+    topic = "user_level_communication#{eid}"
+    PubSub.subscribe(@pubsub, topic)
+  end
+
+  def user_level_broadcast(eid, pid, message) do
+    topic = "user_level_communication#{eid}"
+    Phoenix.PubSub.broadcast(@pubsub, topic, {:direct_communication, message})
+  end
+
   defp table_name(owner_eid) do
     String.to_atom("monitor_app_presence_#{owner_eid}")
   end
@@ -61,7 +71,7 @@ defmodule Bicp.MonitorAppPresence do
   # ------------------------------
   # Broadcast the owner's awareness to all subscribers/friends (once per eid)
   # ------------------------------
-  def broadcast_awareness(owner_eid, status \\ "ONLINE", latitude \\ 0.0 , longitude \\ 0.0) do
+  def broadcast_awareness(owner_eid, awareness_intention, status \\ 1, latitude \\ 0.0 , longitude \\ 0.0) do
     table = init_table(owner_eid)
 
     friends =
@@ -76,10 +86,11 @@ defmodule Bicp.MonitorAppPresence do
     awareness = %Strucs.Awareness{
       owner_eid: owner_eid,
       friends: friends,
-      status: String.upcase(to_string(status)),
+      status: status,
       last_seen: DateTime.utc_now() |> DateTime.truncate(:second),
       latitude: latitude,
-      longitude: longitude
+      longitude: longitude,
+      awareness_intention: awareness_intention
     }
 
     topic = "#{Configuration.awareness_topic()}:#{owner_eid}"
@@ -136,4 +147,7 @@ defmodule Bicp.MonitorAppPresence do
     AllRegistry.fan_out_to_children(device_id, eid, awareness)
   end
 
+
 end
+
+

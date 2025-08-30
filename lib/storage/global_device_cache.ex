@@ -50,8 +50,8 @@ defmodule Storage.PgDeviceCache do
               | ws_pid: pid_str,
                 last_seen: now,
                 status: "ONLINE",
-                status_source: "LOGIN"
-
+                status_source: "LOGIN",
+                awareness_intention: 1
             }
 
             DbDelegator.save_device(updated_device)
@@ -67,7 +67,8 @@ defmodule Storage.PgDeviceCache do
           | ws_pid: pid_str,
             last_seen: now,
             status: "ONLINE",
-            status_source: "LOGIN"
+            status_source: "LOGIN",
+            awareness_intention: 1
         }
 
         DbDelegator.save_device(updated_device)
@@ -159,9 +160,17 @@ end
 
 
 
-
+#  # Get device from ETS only
+#   def get(eid, device_id) do
+#     table = table_name(eid)
+#     key = ets_key(eid, device_id)
+#     case :ets.lookup(table, key) do
+#       [{^key, device}] -> device
+#       [] -> nil
+#     end
+#   end
 # Storage.PgDeviceCache.all("a@domain.com")
-# Storage.PgDeviceCache.all("a@domain.com")
+# Storage.PgDeviceCache.get("a@domain.com", "aaaaa1")
 # Storage.PgDeviceCache.all_by_owner("a@domain.com")
 # Storage.PgDeviceCache.update_status("a@domain.com", "aaaaa1", "PONG", "OFFLINE")
 # Storage.PgDeviceCache.awareness("a@domain.com")

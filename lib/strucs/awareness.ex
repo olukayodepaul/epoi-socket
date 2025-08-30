@@ -8,6 +8,7 @@ defmodule Strucs.Awareness do
     :status,     # AwarenessStatus (ONLINE, AWAY, DND, OFFLINE)
     :last_seen,  # Unix timestamp
     :latitude,   # optional
-    :longitude   # optional
+    :longitude,   # optional
+    :awareness_intention
   ]
 end

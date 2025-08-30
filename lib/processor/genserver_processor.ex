@@ -29,21 +29,32 @@ defmodule Application.Processor do
   end
 
   def handle_cast({:fan_out_to_children, {owner_device_id, eid, awareness}},   state) do
-    # IO.inspect({eid, awareness,  owner_device_id })
+    IO.inspect({awareness.awareness_intention, "dnjewdhew" })
 
-    response = %Dartmessaging.Awareness{
+    # Build the AwarenessNotification
+    notification = %Dartmessaging.AwarenessNotification{
       from: "#{awareness.owner_eid}",
-      last_seen: DateTime.to_unix(awareness.last_seen, :second) ,
+      to: eid,
+      last_seen: DateTime.to_unix(awareness.last_seen, :second),
       status: awareness.status,
       latitude: awareness.latitude,
       longitude: awareness.longitude,
+      awareness_intention: awareness.awareness_intention
     }
 
-    binary = Dartmessaging.Awareness.encode(response)
+    # Wrap it in MessageScheme using route
+    message = %Dartmessaging.MessageScheme{
+      route: 1,  # Define route number for AwarenessNotification
+      payload: {:awareness_notification, notification}
+    }
+
+    # Encode the wrapper
+    binary = Dartmessaging.MessageScheme.encode(message)
+
+    # Send over WebSocket
     send(state.ws_pid, {:binary, binary})
+
     {:noreply, state}
-
   end
-
 
 end

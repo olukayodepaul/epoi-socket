@@ -1,44 +1,72 @@
-defmodule Dartmessaging.PresenceType do
+defmodule Dartmessaging.AwarenessStatus do
   @moduledoc false
 
   use Protobuf, enum: true, protoc_gen_elixir_version: "0.15.0", syntax: :proto3
 
-  field :TYPING, 0
-  field :RECORDING, 1
-  field :REACTING, 2
-  field :VIEWING, 3
+  field :STATUS_UNSPECIFIED, 0
+  field :ONLINE, 1
+  field :OFFLINE, 2
+  field :AWAY, 3
+  field :DND, 4
+  field :BUSY, 5
+  field :INVISIBLE, 6
 end
 
-defmodule Dartmessaging.Awareness do
-  @moduledoc false
-
-  use Protobuf, protoc_gen_elixir_version: "0.15.0", syntax: :proto3
-
-  field :from, 1, type: :string
-  field :last_seen, 2, type: :int64, json_name: "lastSeen"
-  field :status, 3, type: :string
-  field :latitude, 4, type: :double
-  field :longitude, 5, type: :double
-end
-
-defmodule Dartmessaging.Presence do
+defmodule Dartmessaging.AwarenessRequest do
   @moduledoc false
 
   use Protobuf, protoc_gen_elixir_version: "0.15.0", syntax: :proto3
 
   field :from, 1, type: :string
   field :to, 2, type: :string
-  field :type, 3, type: Dartmessaging.PresenceType, enum: true
-  field :timestamp, 4, type: :int64
-  field :latitude, 5, type: :double
-  field :longitude, 6, type: :double
+  field :request_id, 3, type: :int64, json_name: "requestId"
 end
 
-defmodule Dartmessaging.PresenceRequest do
+defmodule Dartmessaging.AwarenessResponse do
   @moduledoc false
 
   use Protobuf, protoc_gen_elixir_version: "0.15.0", syntax: :proto3
 
-  field :awareness, 1, type: Dartmessaging.Awareness
-  field :presence, 2, type: Dartmessaging.Presence
+  field :from, 1, type: :string
+  field :to, 2, type: :string
+  field :request_id, 3, type: :int64, json_name: "requestId"
+  field :status, 4, type: Dartmessaging.AwarenessStatus, enum: true
+  field :last_seen, 5, type: :int64, json_name: "lastSeen"
+  field :latitude, 6, type: :double
+  field :longitude, 7, type: :double
+  field :awareness_intention, 8, type: :int32, json_name: "awarenessIntention"
+end
+
+defmodule Dartmessaging.AwarenessNotification do
+  @moduledoc false
+
+  use Protobuf, protoc_gen_elixir_version: "0.15.0", syntax: :proto3
+
+  field :from, 1, type: :string
+  field :to, 2, type: :string
+  field :status, 3, type: Dartmessaging.AwarenessStatus, enum: true
+  field :last_seen, 4, type: :int64, json_name: "lastSeen"
+  field :latitude, 5, type: :double
+  field :longitude, 6, type: :double
+  field :awareness_intention, 7, type: :int32, json_name: "awarenessIntention"
+end
+
+defmodule Dartmessaging.MessageScheme do
+  @moduledoc false
+
+  use Protobuf, protoc_gen_elixir_version: "0.15.0", syntax: :proto3
+
+  oneof :payload, 0
+
+  field :route, 1, type: :int64
+
+  field :awareness_notification, 2,
+    type: Dartmessaging.AwarenessNotification,
+    json_name: "awarenessNotification",
+    oneof: 0
+
+  field :awareness_response, 3,
+    type: Dartmessaging.AwarenessResponse,
+    json_name: "awarenessResponse",
+    oneof: 0
 end

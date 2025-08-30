@@ -36,6 +36,7 @@ defmodule DartMessagingServer.Application do
       {Redix, name: :redix},
       # Start PubSub
       {Phoenix.PubSub, name: ApplicationServer.PubSub},
+      
       # Start Presence
       ApplicationServer.Presence,
       case Configuration.selected_db() do
