@@ -45,29 +45,73 @@ defmodule DartMessagingServer.Socket do
     {:reply, {:binary, binary}, state}
   end
 
-
-
-  def websocket_handle({:binary, data},  {:new,{_eid, device_id}} = state) do
+  def websocket_handle({:binary, data}, {:new, {_eid, device_id}} = state) do
     if data == <<>> do
       Logger.error("Received empty binary")
+      send_error(device_id, 0, "Empty message received", "No route")
       {:ok, state}
     else
-      cond do
-        decoded = safe_decode(Dartmessaging.Awareness, data) ->
-          AllRegistry.handle_awareness(decoded, device_id)
-          
-        # decoded = safe_decode(Dartmessaging.PresenceSignal, data) ->
-        #   # AllRegistry.handle_binary(decoded.eid, :presence_signal, decoded)
-        #   IO.inspect(0)
+      case safe_decode(Dartmessaging.MessageScheme, data) do
+        false ->
+          Logger.error("Failed to decode MessageScheme")
+          send_error(device_id, 400, "Failed to decode MessageScheme", "unknown")
+          {:ok, state}
 
-        true ->
-          Logger.error("Invalid message received")
+        %Dartmessaging.MessageScheme{route: route, payload: payload} ->
+          # Dispatch based on route
+          dispatch_map()
+          |> Map.get(route, &default_handler/2)
+          |> then(fn handler -> handler.(payload, device_id) end)
+
+          {:ok, state}
       end
-
-      {:ok, state}
     end
   end
 
+  # --------------------------
+  # Define the dispatch map: route_number => handler_function
+  defp dispatch_map do
+    %{
+      1 => &handle_awareness_notification/2,
+      2 => &handle_awareness_response/2
+    }
+  end
+
+  # --------------------------
+  # Handler implementations
+  defp handle_awareness_notification({:awareness_notification, notif}, device_id) do
+    AllRegistry.handle_awareness_notification(notif, device_id)
+  end
+
+  defp handle_awareness_response({:awareness_response, resp}, device_id) do
+    AllRegistry.handle_awareness_response(resp, device_id)
+  end
+
+  # Default handler for unknown or invalid payloads
+  defp default_handler(_payload, device_id) do
+    Logger.error("Unknown or invalid payload received")
+    send_error(device_id, 422, "Invalid payload or unknown route", "unknown")
+  end
+
+  # --------------------------
+  # Send structured ErrorMessage back
+  defp send_error(device_id, code, message, route, details \\ "") do
+    error_msg = %Dartmessaging.ErrorMessage{
+      code: code,
+      message: message,
+      route: route,
+      details: details
+    }
+
+    message = %Dartmessaging.MessageScheme{
+      route: 0,  # Use 0 or reserved route for errors
+      payload: {:error_message, error_msg}
+    }
+
+    WebSocketServer.send(device_id, message)
+  end
+
+  # --------------------------
   defp safe_decode(module, data) do
     try do
       module.decode(data)

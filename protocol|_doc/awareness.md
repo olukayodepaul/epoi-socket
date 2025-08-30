@@ -23,7 +23,7 @@ Awareness information includes:
 
 ## 2. Terminology
 
-- **Entity Identifier (EID):** A unique identifier for a user or device, e.g., `alice@domain.com/phone`
+- **Epohai Identifier (EID):** A unique identifier for a user or device, e.g., `alice@domain.com/phone`
 - **Requester:** The entity asking about awareness
 - **Responder:** The entity whose awareness is being queried
 - **Notification:** A proactive awareness update sent without a request
@@ -94,6 +94,14 @@ enum AwarenessStatus {
   UNKNOWN = 8;
 }
 
+// Standardized error message
+message ErrorMessage {
+  int32 code = 1;          // Numeric error code (e.g., 400, 404, 500)
+  string message = 2;      // Human-readable error description
+  string route = 3;        // Optional: which route caused the error
+  string details = 4;      // Optional: extra context or debug info
+}
+
 // MessageScheme: Envelope for routing multiple schemas
 message MessageScheme {
   int64 route = 1;  // Logical route identifier
@@ -101,6 +109,7 @@ message MessageScheme {
   oneof payload {
     AwarenessNotification awareness_notification = 2;
     AwarenessResponse awareness_response = 3;
+    ErrorMessage error_message = 4;
   }
 }
 ```

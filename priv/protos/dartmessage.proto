@@ -48,6 +48,13 @@ enum AwarenessStatus {
   UNKNOWN = 8;
 }
 
+message ErrorMessage {
+  int32 code = 1;          // Numeric error code (e.g., 400, 404, 500)
+  string message = 2;      // Human-readable error description
+  string route = 3;        // Optional: which route caused the error
+  string details = 4;      // Optional: extra context or debug info
+}
+
 // Generic wrapper using google.protobuf.Any
 // Wrapper message with route + oneof payload
 message MessageScheme {
@@ -55,5 +62,6 @@ message MessageScheme {
   oneof payload {
     AwarenessNotification awareness_notification = 2;
     AwarenessResponse awareness_response = 3;
+    ErrorMessage error_message = 4;
   }
 }
