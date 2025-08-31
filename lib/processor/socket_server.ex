@@ -32,12 +32,13 @@ defmodule DartMessagingServer.Socket do
   end
 
   def websocket_info(:send_ping, state) do
-    Logger.info("Sending ping frame to client")
     {:reply, :ping, state}
   end
 
   def websocket_handle(:pong, {:new,{_eid, device_id}} = state) do
-    PingPongHelper.handle_pong(device_id, state)
+    now = DateTime.utc_now()
+    PingPongHelper.handle_pong_from_network(device_id, now)
+    {:ok, state}
   end
 
   def websocket_info({:binary, binary}, state) do

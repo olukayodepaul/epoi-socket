@@ -9,7 +9,7 @@ defmodule App.AllRegistry do
         GenServer.cast(pid, {:m_setup_client_init, %{eid: eid, device_id: device_id, ws_pid: ws_pid }})
         :ok
       []->
-        Logger.warning("No registry entry for #{device_id}, cannot maybe_start_mother")
+        Logger.warning("5 No registry entry for #{device_id}, cannot maybe_start_mother")
         {:error}
     end
   end
@@ -17,19 +17,19 @@ defmodule App.AllRegistry do
   def schedule_ping_registry(device_id, interval) do
     case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
       [{pid, _}] -> 
-        Process.send_after(pid, :send_ping, interval)
+        Process.send_after(pid, {:send_ping, interval}, interval)
       [] -> 
-        Logger.warning("No registry entry for #{device_id}, cannot schedule ping")
+        Logger.warning("4 No registry entry for #{device_id}, cannot schedule ping")
     end
   end
 
-  def handle_pong_registry(device_id) do
+  def handle_pong_registry(device_id, sent_time) do
     case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
       [{pid, _}] ->
         Logger.info("Forwarding pong to Application.Processor for #{device_id}")
-        GenServer.cast(pid, :received_pong)
+        GenServer.cast(pid, {:received_pong, {device_id, sent_time}})
       [] ->
-        Logger.warning("No Application.Processor GenServer found for pong: #{device_id}")
+        Logger.warning("3 No Application.Processor GenServer found for pong: #{device_id}")
     end
   end
 
@@ -39,7 +39,7 @@ defmodule App.AllRegistry do
       GenServer.cast(pid, {:monitor_terminate_child, {eid, device_id}})
       :ok
     [] ->
-      Logger.warning("No registry entry for #{device_id}, cannot maybe_start_mother")
+      Logger.warning("2 No registry entry for #{device_id}, cannot maybe_start_mother")
       :error
     end
   end
@@ -61,7 +61,7 @@ defmodule App.AllRegistry do
         GenServer.cast(pid, {:fan_out_to_children, {device_id, eid, awareness}})
         :ok
       [] ->
-        Logger.warning("No registry entry for #{eid}, cannot maybe_start_mother")
+        Logger.warning("1 No registry entry for #{eid}, cannot maybe_start_mother")
         :error
     end
   end

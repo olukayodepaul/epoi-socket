@@ -71,7 +71,7 @@ defmodule Bicp.MonitorAppPresence do
   # ------------------------------
   # Broadcast the owner's awareness to all subscribers/friends (once per eid)
   # ------------------------------
-  def broadcast_awareness(owner_eid, awareness_intention, status \\ 1, latitude \\ 0.0 , longitude \\ 0.0) do
+  def broadcast_awareness(owner_eid, awareness_intention \\ 2, status \\ 1, latitude \\ 0.0 , longitude \\ 0.0) do
     table = init_table(owner_eid)
 
     friends =

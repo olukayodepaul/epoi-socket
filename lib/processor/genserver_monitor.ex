@@ -61,29 +61,29 @@ defmodule Application.Monitor do
           supports_notifications: true,
           supports_media: true,
           status_source: "LOGIN",
-          awareness_intention: 1,
+          awareness_intention: 2,
           inserted_at: now
         }
         #using what is inserte
         PgDeviceCache.save(device, eid)
     end
-    device = PgDeviceCache.get(eid, device_id)
-    MonitorAppPresence.broadcast_awareness(device.eid, device.awareness_intention)
+    #kindly allow ping pong to broadcast
+    # device = PgDeviceCache.get(eid, device_id)
+    # MonitorAppPresence.broadcast_awareness(device.eid, device.awareness_intention)
     {:noreply, state}
   end
 
   @impl true
   def handle_cast({:send_pong, {eid, device_id, status}}, state) do
-    IO.inspect({eid, device_id, status})
     PgDeviceCache.update_status(eid, device_id, "PONG", status)
-    # DevicePresenceAggregator.track_state_change(eid)
-    
-
-    #1. update device_state..................
-    #2. send user current status to subscribers.... on state state
-    #3. 
-
-
+    case DevicePresenceAggregator.track_state_change(eid) do
+      {:changed, user_status, _online_devices} ->
+        device = PgDeviceCache.get(eid, device_id)
+        MonitorAppPresence.broadcast_awareness(device.eid, device.awareness_intention)
+        :ok
+      {:unchanged, _user_status, _online_devices} ->
+        :ok
+    end
     {:noreply, state}
   end
 

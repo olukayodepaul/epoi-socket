@@ -12,19 +12,33 @@ defmodule Application.Processor do
 
   @impl true
   def init({eid, device_id, ws_pid}) do
+
     AllRegistry.setup_client_init({eid, device_id, ws_pid}) # pass
     PingPongHelper.schedule_ping(device_id)
-    {:ok, %{missed_pongs: 0, pong_counter: 0, timer: DateTime.utc_now(), 
-    eid: eid, device_id: device_id, ws_pid: ws_pid,
-    last_rtt: nil, max_missed_pongs_adaptive: Configuration.initial_adaptive_max_missed()
+
+    {:ok, %{
+      missed_pongs: 0, 
+      pong_counter: 0, 
+      timer: DateTime.utc_now(), 
+      eid: eid, 
+      device_id: device_id, 
+      ws_pid: ws_pid,
+      last_rtt: nil, 
+      max_missed_pongs_adaptive: Configuration.initial_adaptive_max_missed(), 
+      last_send_ping: nil
     }}
+    
   end
 
   # Handle ping/pong
   @impl true
-  def handle_info(:send_ping, state), do: PingPongHelper.handle_ping(state)
-  def handle_cast(:received_pong, state), do: {:noreply, PingPongHelper.reset_pongs(state)}
+  def handle_info({:send_ping, interval}, state) do
+    PingPongHelper.handle_ping(%{state | last_rtt: interval} )
+  end
 
+  def handle_cast({:received_pong, {device_id, receive_time}}, state) do 
+    PingPongHelper.pongs_received(device_id, receive_time, state)
+  end
   
   # Terminate device session
   @impl true

@@ -14,8 +14,8 @@ defmodule DevicePresenceAggregator do
 
   alias Storage.PgDeviceCache
 
-  @stale_threshold_seconds 60 * 2
-  @force_change_seconds 60 * 3   # 3 minutes
+  @stale_threshold_seconds 60 * 2 # filter out any device stay longer than this time without update
+  @force_change_seconds 60 * 1   # 3 minutes stay idle for sometime, allow to resent status
 
   # --------- ETS Initialization ---------
   defp state_table_name(eid), do: String.to_atom("device_dat_#{eid}")

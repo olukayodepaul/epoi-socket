@@ -127,28 +127,28 @@ defmodule Storage.PgDeviceCache do
   # end
 
   # # Update device status and last_seen//pong can also use this function
-  # def update_status(eid, device_id, status_source, status  \\ @online) do
+  def update_status(eid, device_id, status_source, status  \\ @online) do
   
-  #   table = table_name(eid)
-  #   key = ets_key(eid, device_id)
+    table = table_name(eid)
+    key = ets_key(eid, device_id)
 
-  #   case :ets.lookup(table, key) do
-  #     [{^key, device}] ->
-  #       updated_device = %PgDevicesSchema{
-  #         device
-  #         | status: status,
-  #           status_source: status_source,
-  #           last_seen: DateTime.utc_now() |> DateTime.truncate(:second)
-  #       }
+    case :ets.lookup(table, key) do
+      [{^key, device}] ->
+        updated_device = %PgDevicesSchema{
+          device
+          | status: status,
+            status_source: status_source,
+            last_seen: DateTime.utc_now() |> DateTime.truncate(:second)
+        }
 
-  #       :ets.insert(table, {key, updated_device})
-  #       Task.start(fn -> DbDelegator.save_device(updated_device) end)
-  #       {:ok, updated_device}
+        :ets.insert(table, {key, updated_device})
+        Task.start(fn -> DbDelegator.save_device(updated_device) end)
+        {:ok, updated_device}
 
-  #     [] ->
-  #       {:error, :not_found}
-  #   end
-  # end
+      [] ->
+        {:error, :not_found}
+    end
+  end
 
   # Helper to build ETS key
   defp ets_key(%PgDevicesSchema{eid: eid, device_id: device_id}), do: "#{eid}:#{device_id}"
