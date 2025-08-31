@@ -3,6 +3,7 @@ defmodule Application.Processor do
   require Logger
   alias Util.{RegistryHelper, PingPongHelper}
   alias App.AllRegistry
+  alias ApplicationServer.Configuration
 
   # Start GenServer for device session
   def start_link({_eid, device_id, _ws_pid} = state) do
@@ -13,7 +14,10 @@ defmodule Application.Processor do
   def init({eid, device_id, ws_pid}) do
     AllRegistry.setup_client_init({eid, device_id, ws_pid}) # pass
     PingPongHelper.schedule_ping(device_id)
-    {:ok, %{missed_pongs: 0, pong_counter: 0, timer: DateTime.utc_now(), eid: eid, device_id: device_id, ws_pid: ws_pid}}
+    {:ok, %{missed_pongs: 0, pong_counter: 0, timer: DateTime.utc_now(), 
+    eid: eid, device_id: device_id, ws_pid: ws_pid,
+    last_rtt: nil, max_missed_pongs_adaptive: Configuration.initial_adaptive_max_missed()
+    }}
   end
 
   # Handle ping/pong
@@ -21,6 +25,7 @@ defmodule Application.Processor do
   def handle_info(:send_ping, state), do: PingPongHelper.handle_ping(state)
   def handle_cast(:received_pong, state), do: {:noreply, PingPongHelper.reset_pongs(state)}
 
+  
   # Terminate device session
   @impl true
   def handle_cast({:processor_terminate_device, {device_id, eid}}, state) do

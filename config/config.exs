@@ -8,13 +8,17 @@ config :dart_messaging_server, :server,
   route: "/application/development",
   sign_alg: "RS256",
   pb_key_file_path: "priv/keys/public.pem",
-  ping_interval: 10_000,
-  max_missed_pongs: 3,
   idle_timeout: 60_000,
   selected_db: :postgres, #redis #mysql #mongodb
   awareness_topic: "awareness",
-  max_pong_counter: 3,
-  max_allowed_delay: 120
+
+
+config :dart_messaging_server, :network_ping_pong,
+  max_pong_counter: 3, 
+  max_allowed_delay: 30_000, #30ms safe for general networks, not too aggressive.
+  default_ping_interval: 10_000 #10ms safe for general networks, not too aggressive.
+  initial_adaptive_max_missed: 5  # default safe value for missed pongs before marking offline
+  
 
 config :dart_messaging_server,
   ecto_repos: [App.PgRepo]

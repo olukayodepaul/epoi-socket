@@ -72,8 +72,6 @@ defmodule Storage.GlobalSubscriberCache do
     {:ok, record}
   end
 
-  Storage.GlobalSubscriberCache.delete_subscriber_device("a@domain.com", "b@domain.com", "aaaaa1")
-
   @doc """
   Update an existing device record. If not exists, insert it.
   """

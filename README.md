@@ -7,25 +7,52 @@
 
 ---
 
+## Table of Contents
+
+1. [Introduction](#1-introduction)
+2. [Terminology](#2-terminology)
+3. [Protocol Overview](#3-protocol-overview)
+4. [Message Types](#4-message-types)
+   - [4.1 Awareness Messages](#41-awareness-messages)
+   - [4.2 PingPong Messages](#42-pingpong-messages)
+   - [4.3 Token Revoke Messages](#43-token-revoke-messages)
+5. [Protocol Buffers Definitions](#5-protocol-buffers-definitions)
+   - [5.1 Awareness](#51-awareness)
+   - [5.2 PingPong](#52-pingpong)
+   - [5.3 TokenRevoke](#53-tokenrevoke)
+6. [Semantics](#6-semantics)
+   - [6.1 Awareness](#61-awareness)
+   - [6.2 PingPong](#62-pingpong)
+   - [6.3 TokenRevoke](#63-tokenrevoke)
+7. [Example Exchanges](#7-example-exchanges)
+   - [7.1 Awareness](#71-awareness)
+   - [7.2 PingPong](#72-pingpong)
+   - [7.3 TokenRevoke](#73-tokenrevoke)
+8. [Security Considerations](#8-security-considerations)
+9. [IANA Considerations](#9-iana-considerations)
+10. [References](#10-references)
+
+---
+
 ## 1. Introduction
 
-The **Awareness Protocol (AWP)** defines a lightweight message-based system for communicating user and device presence ("awareness") between entities.  
+The Awareness Protocol (AWP) defines a lightweight message-based system for communicating user and device presence ("awareness") between entities.  
 It allows one entity to query the awareness of another, receive responses, and subscribe to notifications about awareness changes.
 
-Awareness information includes:
+The PingPong Protocol (PPG) provides a standardized mechanism to verify connectivity between two entities, measure latency, and detect lost connections.
 
-- Online/offline/busy states
-- Last seen timestamp
-- Optional geolocation (latitude/longitude)
-- Whether awareness was set by the device/network or by explicit user override
+The Token Revoke Protocol (TRP) defines a mechanism for logging out specific devices or all devices of a user using JWT-based authentication.
+
+Together, they form part of **BIMip (Binary Interface for Messaging & Internet Protocol).**
 
 ---
 
 ## 2. Terminology
 
-- **Epohai Identifier (EID):** A unique identifier for a user or device, e.g., `alice@domain.com/phone`
-- **Requester:** The entity asking about awareness
-- **Responder:** The entity whose awareness is being queried
+- **Epohai Identifier (EID):** A unique identifier for a user, e.g., `alice@domain.com`
+- **Device EID:** Identifier for a specific device under a user EID
+- **Requester:** The entity asking about awareness or connectivity
+- **Responder:** The entity providing awareness or ping response
 - **Notification:** A proactive awareness update sent without a request
 - **Route:** Logical identifier in the wrapper indicating which payload schema is carried
 
@@ -33,20 +60,54 @@ Awareness information includes:
 
 ## 3. Protocol Overview
 
-The protocol defines **three primary message types**:
+The protocol defines three categories of primary message types:
 
-1. **AwarenessRequest** – Sent by a requester to query another entity’s awareness state
-2. **AwarenessResponse** – Sent by a responder to return the requested awareness state
-3. **AwarenessNotification** – Sent proactively to notify subscribers about awareness changes
+### Awareness Messages
 
-Messages are encoded using [Protocol Buffers](https://developers.google.com/protocol-buffers) for compact and interoperable serialization.  
-All messages are **wrapped in a `MessageScheme` envelope** that contains a `route` and a `oneof payload`. The route allows the client or server to know which schema to decode.
+- **AwarenessRequest** – Sent by a requester to query another entity’s awareness state
+- **AwarenessResponse** – Sent by a responder to return the requested awareness state
+- **AwarenessNotification** – Sent proactively to notify subscribers about awareness changes
+
+### PingPong Messages
+
+- **PingPong (REQUEST)** – Sent to check connectivity and measure round-trip latency
+- **PingPong (RESPONSE)** – Sent as a reply to indicate success or failure
+
+### Token Revoke Messages
+
+- **TokenRevoke (REQUEST)** – Sent by client or server to revoke a device or session
+- **TokenRevoke (RESPONSE)** – Sent to confirm revocation
+
+Messages are encoded using **[Protocol Buffers](https://protobuf.dev/)** for compact and interoperable serialization.  
+All messages are wrapped in a `MessageScheme` **envelope** that contains a `route` and a `oneof payload`. The `route` allows the client or server to know which schema to decode without guessing.
 
 ---
 
-## 4. Message Structures
+## 4. Message Types
 
-```proto
+### 4.1 Awareness Messages
+
+- **AwarenessRequest** – Query awareness state
+- **AwarenessResponse** – Return awareness state
+- **AwarenessNotification** – Proactive awareness updates
+
+### 4.2 PingPong Messages
+
+- **PingPong (REQUEST)** – Sent to verify connectivity and measure round-trip time
+- **PingPong (RESPONSE)** – Sent as a reply to indicate success/failure and timing
+
+### 4.3 Token Revoke Messages
+
+- **TokenRevoke (REQUEST)** – Initiates logout for a device or all devices under a user EID
+- **TokenRevoke (RESPONSE)** – Confirms revocation
+
+---
+
+## 5. Protocol Buffers Definitions
+
+### 5.1 Awareness
+
+````proto
 syntax = "proto3";
 package dartmessaging;
 
@@ -76,12 +137,12 @@ message AwarenessNotification {
   string to = 2;                 // Target entity (EID)
   AwarenessStatus status = 3;    // Current awareness state
   int64 last_seen = 4;           // Unix UTC timestamp
-  double latitude = 5;           // Optional: defaults to 0.0 if not set
-  double longitude = 6;          // Optional: defaults to 0.0 if not set
-  int32 awareness_intention = 7; // Optional: defaults to 0 if not set
+  double latitude = 5;           // Optional
+  double longitude = 6;          // Optional
+  int32 awareness_intention = 7; // Optional
 }
 
-// AwarenessStatus Enumeration: Standardized awareness states
+// AwarenessStatus Enumeration
 enum AwarenessStatus {
   STATUS_UNSPECIFIED = 0;
   ONLINE = 1;
@@ -96,11 +157,74 @@ enum AwarenessStatus {
 
 // Standardized error message
 message ErrorMessage {
-  int32 code = 1;          // Numeric error code (e.g., 400, 404, 500)
-  string message = 2;      // Human-readable error description
-  string route = 3;        // Optional: which route caused the error
-  string details = 4;      // Optional: extra context or debug info
+  int32 code = 1;
+  string message = 2;
+  string route = 3;
+  string details = 4;
 }
+
+
+### 5.2 PingPong
+
+```proto
+// PingPong message for connection health
+message PingPong {
+  string from = 1;          // Sender entity (EID)
+  string to = 2;            // Recipient entity (EID)
+  PingType type = 3;        // REQUEST = 1, RESPONSE = 2
+  PingStatus status = 4;    // UNKNOWN = 0, SUCCESS = 1, FAIL = 2
+  int64 request_time = 5;   // Unix UTC timestamp of request (ms)
+  int64 response_time = 6;  // Unix UTC timestamp of response (ms)
+}
+
+// Ping type
+enum PingType {
+  REQUEST = 1;
+  RESPONSE = 2;
+}
+
+// Optional status
+enum PingStatus {
+  UNKNOWN = 0;
+  SUCCESS = 1;
+  FAIL = 2;
+}
+````
+
+### 5.3 TokenRevoke
+
+```proto
+// Identity with optional device_eid
+message Identity {
+  string eid = 1;           // User Epohai Identifier
+  string device_eid = 2;    // Optional: specific device under the user
+}
+
+// Token revoke / logout message
+message TokenRevoke {
+  Identity from = 1;        // Initiator (user or server)
+  Identity to = 2;          // Target entity (user/device)
+  RevokeType type = 3;      // REQUEST = 1, RESPONSE = 2
+  int64 timestamp = 4;      // Unix UTC timestamp
+}
+
+enum RevokeType {
+  REQUEST = 1;  // Client initiates logout
+  RESPONSE = 2; // Server confirms revocation
+}
+```
+
+### MessageScheme Envelope
+
+```proto
+// Route numbers for MessageScheme:
+// 1 -> Logical route identifier
+// 2 -> AwarenessNotification
+// 3 -> AwarenessResponse
+// 4 -> AwarenessRequest
+// 5 -> ErrorMessage
+// 6 -> PingPong
+// 7 -> TokenRevoke
 
 // MessageScheme: Envelope for routing multiple schemas
 message MessageScheme {
@@ -109,45 +233,46 @@ message MessageScheme {
   oneof payload {
     AwarenessNotification awareness_notification = 2;
     AwarenessResponse awareness_response = 3;
-    ErrorMessage error_message = 4;
+    AwarenessRequest awareness_request = 4;
+    ErrorMessage error_message = 5;
+    PingPong pingpong_message = 6;
+    TokenRevoke token_revoke = 7;
   }
 }
 ```
 
-### Route numbers (example)
+---
 
-- `1` → AwarenessNotification
-- `2` → AwarenessResponse
+## 6. Semantics
 
-The client decodes `MessageScheme` first, inspects the `route`, then accesses the correct payload without looping or guessing.
+### 6.1 Awareness
+
+- Requests **MUST** be answered with responses unless blocked/unauthorized.
+- Responses **MUST** echo `request_id`.
+- Notifications **MAY** be sent proactively without acknowledgment.
+
+### 6.2 PingPong
+
+- A PingPong **REQUEST** is used to test connection health.
+- A PingPong **RESPONSE** **MUST** be returned with same timestamps.
+- `status` indicates if the connectivity check was successful or failed.
+
+### 6.3 TokenRevoke
+
+- **from:** identifies the initiator of the revoke. Can include `device_eid` if action originates from a specific device.
+- **to:** identifies the target user or device. Including `device_eid` targets a specific device; omitting it applies to all devices under the user EID.
+- **type:** distinguishes between a **REQUEST** (initiated by client/server) and a **RESPONSE** (confirmation by server).
+- **timestamp:** marks when the revoke request or confirmation occurred.
+- Servers **MUST** immediately invalidate any revoked sessions and optionally notify other devices.
 
 ---
 
-## 5. Semantics
+## 7. Example Exchanges
 
-### AwarenessRequest
+### 7.1 Awareness Example
 
-- **MUST** be answered with a corresponding `AwarenessResponse`, unless blocked or unauthorized.
-
-### AwarenessResponse
-
-- **MUST** include the same `request_id` as the original request.
-- Provides authoritative awareness state.
-
-### AwarenessNotification
-
-- **MAY** be sent by an entity or server to subscribed parties.
-- **MUST NOT** require acknowledgment.
-
----
-
-## 6. Example Exchanges
-
-### Awareness Notification over WebSocket
-
-```
+```elixir
 def handle_cast({:fan_out_to_children, {owner_device_id, eid, awareness}}, state) do
-  # Build the AwarenessNotification struct
   notification = %Dartmessaging.AwarenessNotification{
     from: "#{awareness.owner_eid}",
     last_seen: DateTime.to_unix(awareness.last_seen, :second),
@@ -157,62 +282,107 @@ def handle_cast({:fan_out_to_children, {owner_device_id, eid, awareness}}, state
     awareness_intention: awareness.awareness_intention
   }
 
-  # Wrap in MessageScheme with route
   message = %Dartmessaging.MessageScheme{
     route: 1,  # Route for AwarenessNotification
     payload: {:awareness_notification, notification}
   }
 
-  # Encode into Protobuf binary
   binary = Dartmessaging.MessageScheme.encode(message)
-
-  # Send over WebSocket
   send(state.ws_pid, {:binary, binary})
 
   {:noreply, state}
 end
 ```
 
-### Client Decoding
+### 7.2 PingPong Example
 
+```elixir
+# Server sends PingPong REQUEST
+ping = %Dartmessaging.PingPong{
+  from: "server@domain.com",
+  to: "client@domain.com",
+  type: :REQUEST,
+  status: :UNKNOWN,
+  request_time: System.system_time(:millisecond)
+}
+
+message = %Dartmessaging.MessageScheme{
+  route: 6, # Route for PingPong
+  payload: {:pingpong_message, ping}
+}
+
+binary = Dartmessaging.MessageScheme.encode(message)
+send(state.ws_pid, {:binary, binary})
+
+# Client decodes and replies with RESPONSE
+{:pingpong_message, ping_req} ->
+  response = %Dartmessaging.PingPong{
+    from: ping_req.to,
+    to: ping_req.from,
+    type: :RESPONSE,
+    status: :SUCCESS,
+    request_time: ping_req.request_time,
+    response_time: System.system_time(:millisecond)
+  }
 ```
-message = Dartmessaging.MessageScheme.decode(binary)
 
-case message.payload do
-  {:awareness_notification, notif} ->
-    IO.inspect(notif)
+### 7.3 TokenRevoke Example
 
-  {:awareness_response, resp} ->
-    IO.inspect(resp)
+```elixir
+revoke_request = %Dartmessaging.TokenRevoke{
+  from: %Dartmessaging.Identity{eid: "admin@domain.com", device_eid: "server1"},
+  to: %Dartmessaging.Identity{eid: "user@domain.com", device_eid: "device123"},
+  type: :REQUEST,
+  timestamp: System.system_time(:millisecond)
+}
 
-  _ ->
-    Logger.error("Unknown route or payload")
-end
+message = %Dartmessaging.MessageScheme{
+  route: 7,
+  payload: {:token_revoke, revoke_request}
+}
 
+binary = Dartmessaging.MessageScheme.encode(message)
+send(state.ws_pid, {:binary, binary})
 ```
 
-Single decode of `MessageScheme` → inspect `route` → access correct payload.
+---
 
-Works for **one-to-one**, **fan-out**, or **group messages** over a single WebSocket.
+## 8. Security Considerations
+
+### Transport Security
+
+- All BIMip communications (HTTP/WebSocket) **MUST** use TLS.
+
+### Authentication Architecture
+
+- User login and token issuance are handled by a separate Token Server.
+- BIMip servers do **not** generate tokens; they only verify JWT tokens presented by clients.
+- Tokens are signed by the Token Server using asymmetric cryptography (private key).
+- BIMip servers verify tokens using the built-in public key of the Token Server.
+
+### Token Usage on BIMip
+
+- Clients authenticate by passing the JWT as a Bearer token in the HTTP/WebSocket headers.
+
+**Example header:**
+
+```http
+Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhd...
+```
+
+### Token Verification (BIMip Server)
+
+- Validate the signature, expiry, and claims (`device_eid`, `eid`) before allowing any message exchange.
 
 ---
 
-## 7. Security Considerations
+## 9. IANA Considerations
 
-- Authenticate awareness requests to prevent spoofing
-- Share sensitive metadata (e.g., location) only with authorized parties
-- Rate-limit notifications to prevent flooding
-
----
-
-## 8. IANA Considerations
-
-- Introduces a new namespace `awareness`; no IANA registry actions required currently
+- Introduces new namespaces `awareness`, `pingpong`, `tokenrevoke`.
+- No IANA registry actions required currently.
 
 ---
 
-## 9. References
+## 10. References
 
-- [RFC 6120] "Extensible Messaging and Presence Protocol (XMPP): Core", March 2011
-- [RFC 2778] "A Model for Presence and Instant Messaging", February 2000
-- [Protocol Buffers Specification](https://developers.google.com/protocol-buffers)
+- \[RFC 6120] Extensible Messaging and Presence Protocol (XMPP): Core, March 201

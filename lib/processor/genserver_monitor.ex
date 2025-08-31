@@ -75,8 +75,15 @@ defmodule Application.Monitor do
   @impl true
   def handle_cast({:send_pong, {eid, device_id, status}}, state) do
     IO.inspect({eid, device_id, status})
-    # track_state_change(eid, device_id)
-    # PgDeviceCache.update_status(eid, device_id, "PONG", status)
+    PgDeviceCache.update_status(eid, device_id, "PONG", status)
+    # DevicePresenceAggregator.track_state_change(eid)
+    
+
+    #1. update device_state..................
+    #2. send user current status to subscribers.... on state state
+    #3. 
+
+
     {:noreply, state}
   end
 
@@ -97,6 +104,7 @@ defmodule Application.Monitor do
     Logger.debug("Unhandled message in Mother: #{inspect(msg)}")
     {:noreply, state}
   end
+
 
 end
 

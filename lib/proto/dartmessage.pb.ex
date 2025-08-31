@@ -10,6 +10,8 @@ defmodule Dartmessaging.AwarenessStatus do
   field :DND, 4
   field :BUSY, 5
   field :INVISIBLE, 6
+  field :NOT_FOUND, 7
+  field :UNKNOWN, 8
 end
 
 defmodule Dartmessaging.AwarenessRequest do
@@ -51,6 +53,17 @@ defmodule Dartmessaging.AwarenessNotification do
   field :awareness_intention, 7, type: :int32, json_name: "awarenessIntention"
 end
 
+defmodule Dartmessaging.ErrorMessage do
+  @moduledoc false
+
+  use Protobuf, protoc_gen_elixir_version: "0.15.0", syntax: :proto3
+
+  field :code, 1, type: :int32
+  field :message, 2, type: :string
+  field :route, 3, type: :string
+  field :details, 4, type: :string
+end
+
 defmodule Dartmessaging.MessageScheme do
   @moduledoc false
 
@@ -69,4 +82,6 @@ defmodule Dartmessaging.MessageScheme do
     type: Dartmessaging.AwarenessResponse,
     json_name: "awarenessResponse",
     oneof: 0
+
+  field :error_message, 4, type: Dartmessaging.ErrorMessage, json_name: "errorMessage", oneof: 0
 end

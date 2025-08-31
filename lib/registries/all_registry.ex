@@ -2,9 +2,6 @@ defmodule App.AllRegistry do
 
   require Logger
   alias ApplicationServer.Configuration
-
-  
-  @ping_interval Configuration.ping_interval()
   
   def setup_client_init({eid, device_id, ws_pid}) do
     case Horde.Registry.lookup(UserRegistry, eid) do
@@ -17,10 +14,10 @@ defmodule App.AllRegistry do
     end
   end
 
-  def schedule_ping_registry(device_id) do
+  def schedule_ping_registry(device_id, interval) do
     case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
       [{pid, _}] -> 
-        Process.send_after(pid, :send_ping, @ping_interval)
+        Process.send_after(pid, :send_ping, interval)
       [] -> 
         Logger.warning("No registry entry for #{device_id}, cannot schedule ping")
     end
@@ -48,6 +45,7 @@ defmodule App.AllRegistry do
   end
 
   def send_pong(device_id, eid, status \\ "ONLINE") do
+    # we can check if the registry id global or local.
     case Horde.Registry.lookup(UserRegistry, eid) do
       [{pid, _}] ->
         GenServer.cast(pid, {:send_pong, {eid, device_id, status}})
