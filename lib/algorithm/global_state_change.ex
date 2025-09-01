@@ -1,4 +1,4 @@
-defmodule DevicePresenceAggregator do
+defmodule Global.StateChange do
   @moduledoc """
   Aggregates device statuses into a user-level presence,
   respecting awareness_intention rules and last_seen threshold.
@@ -18,7 +18,7 @@ defmodule DevicePresenceAggregator do
   @force_change_seconds 60 * 1   # 3 minutes stay idle for sometime, allow to resent status
 
   # --------- ETS Initialization ---------
-  defp state_table_name(eid), do: String.to_atom("device_dat_#{eid}")
+  defp state_table_name(eid), do: String.to_atom("global_state_change_#{eid}")
 
   defp init_state_table(eid) do
     table = state_table_name(eid)

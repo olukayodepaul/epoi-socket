@@ -7,7 +7,7 @@ defmodule Application.Monitor do
   # alias App.AllRegistry
   alias Storage.{GlobalSubscriberCache, PgDeviceCache, PgDevicesSchema}
   alias Bicp.MonitorAppPresence
-  # alias DevicePresenceAggregator
+  alias Global.StateChange
 
   def start_link(eid) do
     GenServer.start(__MODULE__, eid, name: RegistryHelper.via_monitor_registry(eid))
@@ -76,7 +76,7 @@ defmodule Application.Monitor do
   @impl true
   def handle_cast({:send_pong, {eid, device_id, status}}, state) do
     PgDeviceCache.update_status(eid, device_id, "PONG", status)
-    case DevicePresenceAggregator.track_state_change(eid) do
+    case StateChange.track_state_change(eid) do
       {:changed, user_status, _online_devices} ->
         device = PgDeviceCache.get(eid, device_id)
         MonitorAppPresence.broadcast_awareness(device.eid, device.awareness_intention)

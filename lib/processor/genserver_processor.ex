@@ -25,7 +25,8 @@ defmodule Application.Processor do
       ws_pid: ws_pid,
       last_rtt: nil, 
       max_missed_pongs_adaptive: Configuration.initial_adaptive_max_missed(), 
-      last_send_ping: nil
+      last_send_ping: nil,
+      last_state_change: DateTime.utc_now()
     }}
     
   end
@@ -48,8 +49,6 @@ defmodule Application.Processor do
   end
 
   def handle_cast({:fan_out_to_children, {owner_device_id, eid, awareness}},   state) do
-    IO.inspect({awareness.awareness_intention, "dnjewdhew" })
-
     # Build the AwarenessNotification
     notification = %Dartmessaging.AwarenessNotification{
       from: "#{awareness.owner_eid}",
