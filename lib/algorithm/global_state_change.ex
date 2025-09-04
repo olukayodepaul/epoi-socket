@@ -14,8 +14,10 @@ defmodule Global.StateChange do
 
   alias Storage.PgDeviceCache
 
-  @stale_threshold_seconds 60 * 2 # filter out any device stay longer than this time without update
-  @force_change_seconds 60 * 1   # 3 minutes stay idle for sometime, allow to resent status
+  @stale_threshold_seconds 60 * 5 # filter out any device stay longer than this time without update
+  @force_change_seconds 60 * 3   # 3 minutes stay idle for sometime, allow to resent status
+
+  require Logger
 
   # --------- ETS Initialization ---------
   defp state_table_name(eid), do: String.to_atom("global_state_change_#{eid}")
@@ -127,4 +129,52 @@ defmodule Global.StateChange do
         end
     end
   end
+
+  def schedule_termination_if_all_offline(%{eid: eid, current_timer: current_timer} =  state) do
+    now = DateTime.utc_now()
+    devices = Storage.PgDeviceCache.all(eid)
+
+    # Filter only ONLINE devices within the stale threshold
+    online_devices =
+      devices
+      |> Enum.filter(fn d ->
+        d.status == "ONLINE" and DateTime.diff(now, d.last_seen) <= @stale_threshold_seconds
+      end)
+
+    # Cancel previous timer if exists
+    if current_timer, do: Process.cancel_timer(current_timer)
+
+    if online_devices == [] do
+      # No online devices → compute latest last_seen, handle empty list safely
+      latest_last_seen =
+        devices
+        |> Enum.map(& &1.last_seen)
+        |> Enum.max(fn -> now end)  # if list empty, use now
+
+      # Calculate remaining grace period in milliseconds
+      diff = DateTime.diff(now, latest_last_seen)
+      grace_period = max(@stale_threshold_seconds - diff, 0) * 1000
+
+      Logger.warning("All devices offline. Scheduling termination in #{grace_period} ms.")
+
+      # Schedule termination
+      timer_ref = Process.send_after(self(), :terminate_process, grace_period)
+      {:noreply, %{state | current_timer: timer_ref}}
+    else
+      Logger.info("There are still online devices. No termination scheduled.")
+      {:noreply, %{state | current_timer: nil}}
+    end
+  end
+
+  def cancel_termination_if_all_offline(state) do
+    if state.current_timer do
+      Process.cancel_timer(state.current_timer)
+      Logger.info("Cancelled termination timer for #{state.eid}")
+    end
+    {:noreply, %{state | current_timer: nil}}
+  end
+
 end
+
+
+# Global.StateChange.schedule_termination_if_all_offline("a@domain.com")

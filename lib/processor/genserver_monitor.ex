@@ -4,7 +4,6 @@ defmodule Application.Monitor do
 
   alias DartMessagingServer.DynamicSupervisor
   alias Util.{RegistryHelper}
-  # alias App.AllRegistry
   alias Storage.{GlobalSubscriberCache, PgDeviceCache, PgDevicesSchema}
   alias Bicp.MonitorAppPresence
   alias Global.StateChange
@@ -20,7 +19,7 @@ defmodule Application.Monitor do
     GlobalSubscriberCache.init(eid)
     MonitorAppPresence.subscribe_to_friends(eid)
     MonitorAppPresence.user_level_subscribtion(eid)
-    {:ok, %{eid: eid, devices: %{}}}
+    {:ok, %{eid: eid, current_timer: nil, devices: %{}}}
   end
 
   # Device session start
@@ -67,8 +66,15 @@ defmodule Application.Monitor do
         #using what is inserte
         PgDeviceCache.save(device, eid)
     end
-    # device = PgDeviceCache.get(eid, device_id)
-    # MonitorAppPresence.broadcast_awareness(device.eid, device.awareness_intention, 1)
+    case StateChange.track_state_change(eid) do
+      {:changed, user_status, _online_devices} ->
+        device = PgDeviceCache.get(eid, device_id)
+        MonitorAppPresence.broadcast_awareness(device.eid, device.awareness_intention)
+        :ok
+      {:unchanged, _user_status, _online_devices} ->
+        :ok
+    end
+    StateChange.cancel_termination_if_all_offline(state)
     {:noreply, state}
   end
 
@@ -87,14 +93,16 @@ defmodule Application.Monitor do
   end
 
   def handle_cast({:monitor_handle_logout, %{device_id: device_id, eid: eid}}, state) do
-    PgDeviceCache.update_status(eid, device_id, "LOGOUT", "OFFLINE")
+    IO.inspect("monitor_handle_logout here")
+    PgDeviceCache.update_status_without_last_see(eid, device_id, "LOGOUT", "OFFLINE")
+    StateChange.schedule_termination_if_all_offline(state)
     case StateChange.track_state_change(eid) do
       {:changed, user_status, _online_devices} ->
+        IO.inspect({"chage monitor_handle_logout here", user_status})
         device = PgDeviceCache.get(eid, device_id)
         MonitorAppPresence.broadcast_awareness(device.eid, device.awareness_intention, user_status)
         :ok
       {:unchanged, _user_status, _online_devices} ->
-        IO.inspect({:unchanged})
         :ok
     end
     {:noreply, state}
@@ -103,14 +111,15 @@ defmodule Application.Monitor do
   #still need to make adjustment to this
   @impl true
   def handle_info({:awareness_update, %Strucs.Awareness{} = awareness}, %{eid: eid} = state) do
-    IO.inspect(awareness)
     MonitorAppPresence.fan_out_to_children(eid, awareness)
     {:noreply, state}
   end
 
-  # def handle_info({:direct_communication, message}, state) do
-  #   {:noreply, state}
-  # end
+  def handle_info(:terminate_process, state) do
+    Logger.info("No activity during grace period. Terminating mother for #{state.eid}")
+    StateChange.cancel_termination_if_all_offline(state)
+    {:stop, :normal, state}
+  end
 
   # Catch-all for unexpected messages
   @impl true

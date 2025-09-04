@@ -142,7 +142,7 @@ defmodule Application.Processor do
   # Terminate device session
   @impl true
   def handle_cast({:processor_terminate_device, {device_id, eid}}, state) do
-    # AllRegistry.terminate_child_process({eid, device_id})
+    AllRegistry.terminate_child_process({eid, device_id})
     {:stop, :normal, state}
   end
 

@@ -5,7 +5,7 @@ defmodule Registries.TerminateHandler do
   @doc """
   Handles cleanup and logging when a WebSocket terminates.
   """
-  def handle_terminate(reason, {:new,{eid, device_id}}) do
+  def handle_terminate(reason, %{eid: eid, device_id: device_id}) do
     Logger.info("WebSocket terminated for #{device_id}, reason: #{inspect(reason)}")
     case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
       [{pid, _}] ->

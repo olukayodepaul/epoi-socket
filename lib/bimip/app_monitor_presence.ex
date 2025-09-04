@@ -72,7 +72,7 @@ defmodule Bicp.MonitorAppPresence do
   # ------------------------------
   # Broadcast the owner's awareness to all subscribers/friends (once per eid)
   # ------------------------------
-  def broadcast_awareness(owner_eid, awareness_intention \\ 2, status, latitude \\ 0.0 , longitude \\ 0.0) do
+  def broadcast_awareness(owner_eid, awareness_intention \\ 2, status \\ :online, latitude \\ 0.0 , longitude \\ 0.0) do
     
     table = init_table(owner_eid)
 
@@ -106,8 +106,7 @@ defmodule Bicp.MonitorAppPresence do
     )
 
     # Single broadcast per owner
-    :ok = Phoenix.PubSub.broadcast(@pubsub, topic, {:awareness_update, awareness})
-    :ok
+    Phoenix.PubSub.broadcast(@pubsub, topic, {:awareness_update, awareness})
   end
 
   # ------------------------------

@@ -51,7 +51,7 @@ defmodule Storage.PgDeviceCache do
                 last_seen: now,
                 status: "ONLINE",
                 status_source: "LOGIN",
-                awareness_intention: 1
+                awareness_intention: 2
             }
 
             DbDelegator.save_device(updated_device)
@@ -67,8 +67,7 @@ defmodule Storage.PgDeviceCache do
           | ws_pid: pid_str,
             last_seen: now,
             status: "ONLINE",
-            status_source: "LOGIN",
-            awareness_intention: 2
+            status_source: "LOGIN"
         }
 
         DbDelegator.save_device(updated_device)
@@ -139,6 +138,29 @@ defmodule Storage.PgDeviceCache do
           | status: status,
             status_source: status_source,
             last_seen: DateTime.utc_now() |> DateTime.truncate(:second)
+        }
+
+        :ets.insert(table, {key, updated_device})
+        Task.start(fn -> DbDelegator.save_device(updated_device) end)
+        {:ok, updated_device}
+
+      [] ->
+        {:error, :not_found}
+    end
+  end
+
+    # # Update device status and last_seen//pong can also use this function
+  def update_status_without_last_see(eid, device_id, status_source, status  \\ @online) do
+  
+    table = table_name(eid)
+    key = ets_key(eid, device_id)
+
+    case :ets.lookup(table, key) do
+      [{^key, device}] ->
+        updated_device = %PgDevicesSchema{
+          device
+          | status: status,
+            status_source: status_source
         }
 
         :ets.insert(table, {key, updated_device})

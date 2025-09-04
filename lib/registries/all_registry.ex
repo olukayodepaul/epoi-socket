@@ -33,16 +33,7 @@ defmodule App.AllRegistry do
     end
   end
 
-  def terminate_child_process({eid, device_id}) do
-    case Horde.Registry.lookup(UserRegistry, eid) do
-    [{pid, _}] ->
-      GenServer.cast(pid, {:monitor_terminate_child, {eid, device_id}})
-      :ok
-    [] ->
-      Logger.warning("2 No registry entry for #{device_id}, cannot maybe_start_mother")
-      :error
-    end
-  end
+ 
 
   def send_pong_to_server(device_id, eid, status \\ "ONLINE") do
     # we can check if the registry id global or local.
@@ -99,6 +90,18 @@ defmodule App.AllRegistry do
         :ok
       [] ->
         :error
+    end
+  end
+
+  def terminate_child_process({eid, device_id}) do
+    IO.inspect("jncjdsn jdncjsdanc jdnacj. djsacihadsbc dsanciadjs ")
+    case Horde.Registry.lookup(UserRegistry, eid) do
+    [{pid, _}] ->
+      GenServer.cast(pid, {:monitor_handle_logout, %{device_id: device_id, eid: eid}})
+      :ok
+    [] ->
+      Logger.warning("2 No registry entry for #{device_id}, cannot maybe_start_mother")
+      :error
     end
   end
 
