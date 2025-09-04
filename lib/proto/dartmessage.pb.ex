@@ -1,59 +1,31 @@
-defmodule Dartmessaging.AwarenessStatus do
-  @moduledoc false
-
-  use Protobuf, enum: true, protoc_gen_elixir_version: "0.15.0", syntax: :proto3
-
-  field :STATUS_UNSPECIFIED, 0
-  field :ONLINE, 1
-  field :OFFLINE, 2
-  field :AWAY, 3
-  field :DND, 4
-  field :BUSY, 5
-  field :INVISIBLE, 6
-  field :NOT_FOUND, 7
-  field :UNKNOWN, 8
-end
-
-defmodule Dartmessaging.AwarenessRequest do
+defmodule Bimip.Identity do
   @moduledoc false
 
   use Protobuf, protoc_gen_elixir_version: "0.15.0", syntax: :proto3
 
-  field :from, 1, type: :string
-  field :to, 2, type: :string
-  field :request_id, 3, type: :int64, json_name: "requestId"
+  field :eid, 1, type: :string
+
+  field :connection_resource_id, 2,
+    proto3_optional: true,
+    type: :string,
+    json_name: "connectionResourceId"
 end
 
-defmodule Dartmessaging.AwarenessResponse do
+defmodule Bimip.AwarenessNotification do
   @moduledoc false
 
   use Protobuf, protoc_gen_elixir_version: "0.15.0", syntax: :proto3
 
-  field :from, 1, type: :string
-  field :to, 2, type: :string
-  field :request_id, 3, type: :int64, json_name: "requestId"
-  field :status, 4, type: Dartmessaging.AwarenessStatus, enum: true
-  field :last_seen, 5, type: :int64, json_name: "lastSeen"
-  field :latitude, 6, type: :double
-  field :longitude, 7, type: :double
-  field :awareness_intention, 8, type: :int32, json_name: "awarenessIntention"
-end
-
-defmodule Dartmessaging.AwarenessNotification do
-  @moduledoc false
-
-  use Protobuf, protoc_gen_elixir_version: "0.15.0", syntax: :proto3
-
-  field :from, 1, type: :string
-  field :to, 2, type: :string
-  field :status, 3, type: Dartmessaging.AwarenessStatus, enum: true
+  field :from, 1, type: Bimip.Identity
+  field :to, 2, type: Bimip.Identity
+  field :status, 3, type: :int32
   field :last_seen, 4, type: :int64, json_name: "lastSeen"
   field :latitude, 5, type: :double
   field :longitude, 6, type: :double
   field :awareness_intention, 7, type: :int32, json_name: "awarenessIntention"
 end
 
-defmodule Dartmessaging.ErrorMessage do
+defmodule Bimip.ErrorMessage do
   @moduledoc false
 
   use Protobuf, protoc_gen_elixir_version: "0.15.0", syntax: :proto3
@@ -64,7 +36,30 @@ defmodule Dartmessaging.ErrorMessage do
   field :details, 4, type: :string
 end
 
-defmodule Dartmessaging.MessageScheme do
+defmodule Bimip.Logout do
+  @moduledoc false
+
+  use Protobuf, protoc_gen_elixir_version: "0.15.0", syntax: :proto3
+
+  field :to, 1, type: Bimip.Identity
+  field :type, 2, type: :int32
+  field :status, 3, type: :int32
+  field :timestamp, 4, type: :int64
+end
+
+defmodule Bimip.PingPong do
+  @moduledoc false
+
+  use Protobuf, protoc_gen_elixir_version: "0.15.0", syntax: :proto3
+
+  field :to, 1, type: Bimip.Identity
+  field :type, 2, type: :int32
+  field :ping_time, 3, type: :int64, json_name: "pingTime"
+  field :pong_time, 4, type: :int64, json_name: "pongTime"
+  field :ping_id, 5, type: :string, json_name: "pingId"
+end
+
+defmodule Bimip.MessageScheme do
   @moduledoc false
 
   use Protobuf, protoc_gen_elixir_version: "0.15.0", syntax: :proto3
@@ -74,14 +69,11 @@ defmodule Dartmessaging.MessageScheme do
   field :route, 1, type: :int64
 
   field :awareness_notification, 2,
-    type: Dartmessaging.AwarenessNotification,
+    type: Bimip.AwarenessNotification,
     json_name: "awarenessNotification",
     oneof: 0
 
-  field :awareness_response, 3,
-    type: Dartmessaging.AwarenessResponse,
-    json_name: "awarenessResponse",
-    oneof: 0
-
-  field :error_message, 4, type: Dartmessaging.ErrorMessage, json_name: "errorMessage", oneof: 0
+  field :ping_pong, 6, type: Bimip.PingPong, json_name: "pingPong", oneof: 0
+  field :logout, 12, type: Bimip.Logout, oneof: 0
+  field :error, 15, type: Bimip.ErrorMessage, oneof: 0
 end

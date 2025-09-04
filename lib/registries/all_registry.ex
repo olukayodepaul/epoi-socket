@@ -44,7 +44,7 @@ defmodule App.AllRegistry do
     end
   end
 
-  def send_pong(device_id, eid, status \\ "ONLINE") do
+  def send_pong_to_server(device_id, eid, status \\ "ONLINE") do
     # we can check if the registry id global or local.
     case Horde.Registry.lookup(UserRegistry, eid) do
       [{pid, _}] ->
@@ -66,5 +66,40 @@ defmodule App.AllRegistry do
     end
   end
 
+  def handle_ping_pong_registry(%{device_id: device_id} = state, data) do
+    case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
+      [{pid, _}] ->
+        GenServer.cast(pid, {:processor_handle_ping_pong, data})
+        :ok
+      [] ->
+        :error
+    end
+  end
+
+  def send_pong_pong_to_socket_monitor(%{ ws_pid: ws_pid, binary: binary}) do
+    send(ws_pid, {:binary, binary})
+    :ok
+  end
+
+  def handle_handle_logout_registry(%{device_id: device_id} = state, data) do
+    case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
+      [{pid, _}] ->
+        GenServer.cast(pid, {:processor_handle_logout, data})
+        :ok
+      [] ->
+        :error
+    end
+  end
+
+  def handle_logout_monitor_and_socket(%{ device_id: device_id, eid: eid, ws_pid: ws_pid, binary: binary}) do
+    send(ws_pid, {:custome_binary, binary})
+    case Horde.Registry.lookup(UserRegistry, eid) do
+      [{pid, _}] ->
+        GenServer.cast(pid, {:monitor_handle_logout, %{device_id: device_id, eid: eid}})
+        :ok
+      [] ->
+        :error
+    end
+  end
 
 end

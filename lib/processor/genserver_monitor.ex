@@ -87,6 +87,11 @@ defmodule Application.Monitor do
     {:noreply, state}
   end
 
+  def handle_cast({:monitor_handle_logout, %{device_id: device_id, eid: eid}}, state) do
+    # check 
+    {:noreply, state}
+  end
+
   @impl true
   def handle_info({:awareness_update, %Strucs.Awareness{} = awareness}, %{eid: eid} = state) do
     IO.inspect(awareness)
@@ -104,7 +109,6 @@ defmodule Application.Monitor do
     Logger.debug("Unhandled message in Mother: #{inspect(msg)}")
     {:noreply, state}
   end
-
-
+  
 end
 

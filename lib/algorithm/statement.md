@@ -40,3 +40,16 @@ When no heartbeat is received, user falls back to offline with last_active times
 Multi-device merge algorithm
 If any device is active → user is online.
 Otherwise → offline, but last_seen = most recent device activity.
+
+ping = %Dartmessaging.PingPong{
+from: "a@domain.com",
+from: "b@domain.com",
+type: :REQUEST,
+status: :UNIQUE,
+request_time: System.system_time(:millisecond)
+}
+
+message = %Dartmessaging.MessageScheme{
+route: 6, # Route for PingPong
+payload: {:pingpong_message, ping}
+}

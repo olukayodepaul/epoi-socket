@@ -112,4 +112,21 @@ defmodule Local.DeviceStateChange do
         :not_found
     end
   end
+
+  def delete_table(device_id, eid) do
+    table = table_name(eid, device_id)
+
+    case :ets.whereis(table) do
+      :undefined ->
+        :ok
+
+      tid when is_reference(tid) ->
+        :ets.delete(tid)
+        Logger.info("Deleted ETS table #{inspect(table)} for #{eid}/#{device_id}")
+        :ok
+    end
+  end
+
 end
+
+

@@ -25,7 +25,7 @@ defmodule DartMessagingServer.Socket do
     end
   end
 
-  def websocket_init(state = {:new,{eid, device_id}}) do
+  def websocket_init(%{ eid: eid, device_id: device_id} = state) do
     DartMessagingServer.MonitorDynamicSupervisor.start_mother(eid)
     Application.Monitor.start_device(eid, {eid, device_id, self()})
     {:ok, state}
@@ -35,10 +35,20 @@ defmodule DartMessagingServer.Socket do
     {:reply, :ping, state}
   end
 
-  def websocket_handle(:pong, {:new,{_eid, device_id}} = state) do
+  def websocket_handle(:pong, %{ eid: _eid, device_id: device_id} = state) do
     now = DateTime.utc_now()
     PingPongHelper.handle_pong_from_network(device_id, now)
     {:ok, state}
+  end
+
+  def websocket_info(:terminate_socket, state) do
+    {:stop, state}
+  end
+
+  def websocket_info({:custome_binary, binary}, state) do
+    Logger.info("Sending awareness frame to client dhbcdsgcvdsbcjhsad jdshvcigdsy")
+    send(self(), :terminate_socket)
+    {:reply, {:binary, binary}, state}
   end
 
   def websocket_info({:binary, binary}, state) do
@@ -46,88 +56,109 @@ defmodule DartMessagingServer.Socket do
     {:reply, {:binary, binary}, state}
   end
 
-  def websocket_handle({:binary, data}, {:new, {_eid, device_id}} = state) do
+  #send out multiple binaries
+  def websocket_info({:binaries, binaries}, state) when is_list(binaries) do
+    #send(self(), {:binaries, [bin1, bin2, bin3]})
+    Logger.info("Sending batch awareness frames to client")
+    frames = Enum.map(binaries, fn bin -> {:binary, bin} end)
+    {:reply, frames, state}
+  end
+
+  def websocket_handle({:binary, data},  state) do
     if data == <<>> do
       Logger.error("Received empty binary")
-      send_error(device_id, 0, "Empty message received", "No route")
       {:ok, state}
     else
-      case safe_decode(Dartmessaging.MessageScheme, data) do
-        false ->
-          Logger.error("Failed to decode MessageScheme")
-          send_error(device_id, 400, "Failed to decode MessageScheme", "unknown")
-          {:ok, state}
-
-        %Dartmessaging.MessageScheme{route: route, payload: payload} ->
-          # Dispatch based on route
+      case safe_decode_route(data) do
+        {:ok, route} ->
+          # Dispatch to the function mapped to this route
           dispatch_map()
           |> Map.get(route, &default_handler/2)
-          |> then(fn handler -> handler.(payload, device_id) end)
+          |> then(fn handler -> handler.(state, data) end)
 
+        {:error, reason} ->
+          Logger.error("Failed to decode route: #{inspect(reason)}")
           {:ok, state}
       end
     end
   end
 
-  # --------------------------
-  # Define the dispatch map: route_number => handler_function
+  # Map route numbers to handler functions
   defp dispatch_map do
     %{
-      1 => &handle_awareness_notification/2,
-      2 => &handle_awareness_response/2
+      # 4  => &handle_awareness_request/2,
+      6  => &handle_ping_pong/2,
+      # 7  => &handle_token_revoke_request/2,
+      # 9  => &handle_subscriber_add_request/2,
+      12 => &handle_logout/2    #implementing loggout
     }
   end
 
-  # --------------------------
-  # Handler implementations
-  defp handle_awareness_notification({:awareness_notification, notif}, device_id) do
-    AllRegistry.handle_awareness_notification(notif, device_id)
+  defp handle_ping_pong(%{eid: eid, device_id: device_id} = state, data) do
+    AllRegistry.handle_ping_pong_registry(state, data)
+    {:ok, state}
   end
 
-  defp handle_awareness_response({:awareness_response, resp}, device_id) do
-    AllRegistry.handle_awareness_response(resp, device_id)
+  #check the request type and other data. if not match then report error....
+  defp handle_logout(%{eid: eid, device_id: device_id} = state, data) do
+    AllRegistry.handle_handle_logout_registry(state, data)
+    {:ok, state}
   end
 
-  # Default handler for unknown or invalid payloads
-  defp default_handler(_payload, device_id) do
-    Logger.error("Unknown or invalid payload received")
-    send_error(device_id, 422, "Invalid payload or unknown route", "unknown")
+
+#     send(self(), :terminate_socket)
+#     {:reply, {:binary, binary}, state}
+
+# -----------------------
+# Handler implementations
+# -----------------------
+# defp handle_awareness_request(state, data) do
+#   msg = Dartmessaging.MessageScheme.decode(data)
+#   IO.inspect(msg.payload, label: "AwarenessRequest payload")
+#   # Send payload to GenServer for processing
+#   # GenServer.cast(PayloadProcessor, {:process_awareness_request, msg.payload, device_id, eid})
+# end
+
+
+# defp handle_token_revoke_request(state, data) do
+#   msg = Dartmessaging.MessageScheme.decode(data)
+#   IO.inspect(msg.payload, label: "TokenRevoke payload")
+#   # GenServer.cast(PayloadProcessor, {:process_token_revoke, msg.payload, device_id, eid})
+# end
+
+# defp handle_subscriber_add_request(state, data) do
+#   msg = Dartmessaging.MessageScheme.decode(data)
+#   IO.inspect(msg.payload, label: "TokenRevoke payload")
+#   # GenServer.cast(PayloadProcessor, {:process_token_revoke, msg.payload, device_id, eid})
+# end
+
+
+defp default_handler(%{ eid: eid, device_id: device_id} = state, data) do
+  Logger.error("Unknown route received for device #{device_id}, eid #{eid}")
+  {:ok, state}
+end
+
+# -----------------------
+# Only decode the route field for fast dispatch
+# -----------------------
+defp safe_decode_route(data) do
+  try do
+    msg = Bimip.MessageScheme.decode(data)
+    {:ok, msg.route}
+  rescue
+    e -> {:error, e}
   end
-
-  # --------------------------
-  # Send structured ErrorMessage back
-  defp send_error(device_id, code, message, route, details \\ "") do
-    error_msg = %Dartmessaging.ErrorMessage{
-      code: code,
-      message: message,
-      route: route,
-      details: details
-    }
-
-    message = %Dartmessaging.MessageScheme{
-      route: 0,  # Use 0 or reserved route for errors
-      payload: {:error_message, error_msg}
-    }
-
-    WebSocketServer.send(device_id, message)
-  end
-
-  # --------------------------
-  defp safe_decode(module, data) do
-    try do
-      module.decode(data)
-    rescue
-      e ->
-        Logger.debug("Decode error for #{inspect(module)}: #{inspect(e)}")
-        false
-    end
-  end
+end
 
   #terminate, send offline message.......
   def terminate(reason, _req, state) do
-    TerminateHandler.handle_terminate(reason, state)
+    # TerminateHandler.handle_terminate(reason, state)
     :ok
   end
 
 end
 
+
+# validate incoming data eid and device_id,
+# validate message sattus agains the chanenl
+# validate message tag

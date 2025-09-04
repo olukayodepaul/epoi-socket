@@ -33,3 +33,23 @@ CREATE TABLE devices (
 
 -- Index for querying by user_id
 CREATE INDEX devices_eid_index ON devices(eid);
+
+
+
+
+pingpong = %Dartmessaging.PingPong{
+  from: "a@domain.com",
+  to: "b@domain.com",
+  type: 0,
+  status: 0,
+  request_time: DateTime.to_unix(DateTime.utc_now(), :millisecond),
+  response_time: 0
+}
+
+message = %Dartmessaging.MessageScheme{
+  route: 6, 
+  payload: {:pingpong_message, pingpong}
+}
+
+binary = Dartmessaging.MessageScheme.encode(message)
+hex = Base.encode16(binary, case: :upper)

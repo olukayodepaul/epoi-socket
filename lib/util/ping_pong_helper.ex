@@ -127,12 +127,12 @@ defmodule Util.PingPongHelper do
         ) do
       {:changed, prev_status} -> 
         # Notify registry that device state has changed
-        AllRegistry.send_pong(device_id, eid, prev_status)
+        AllRegistry.send_pong_to_server(device_id, eid, prev_status)
         {:noreply, %{state | last_state_change: DateTime.utc_now()}}
 
       {:refresh, prev_status} ->
         # Forced refresh without state flip
-        AllRegistry.send_pong(device_id, eid, prev_status)
+        AllRegistry.send_pong_to_server(device_id, eid, prev_status)
         {:noreply, %{state | last_state_change: DateTime.utc_now()}}
 
       {:unchanged, curr_status} ->
