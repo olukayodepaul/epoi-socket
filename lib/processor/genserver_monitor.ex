@@ -3,7 +3,7 @@ defmodule Application.Monitor do
   require Logger
 
   alias DartMessagingServer.DynamicSupervisor
-  alias Util.RegistryHelper
+  alias Util.{RegistryHelper}
   # alias App.AllRegistry
   alias Storage.{GlobalSubscriberCache, PgDeviceCache, PgDevicesSchema}
   alias Bicp.MonitorAppPresence
@@ -67,9 +67,8 @@ defmodule Application.Monitor do
         #using what is inserte
         PgDeviceCache.save(device, eid)
     end
-    #kindly allow ping pong to broadcast
     # device = PgDeviceCache.get(eid, device_id)
-    # MonitorAppPresence.broadcast_awareness(device.eid, device.awareness_intention)
+    # MonitorAppPresence.broadcast_awareness(device.eid, device.awareness_intention, 1)
     {:noreply, state}
   end
 
@@ -79,7 +78,7 @@ defmodule Application.Monitor do
     case StateChange.track_state_change(eid) do
       {:changed, user_status, _online_devices} ->
         device = PgDeviceCache.get(eid, device_id)
-        MonitorAppPresence.broadcast_awareness(device.eid, device.awareness_intention)
+        MonitorAppPresence.broadcast_awareness(device.eid, device.awareness_intention, user_status)
         :ok
       {:unchanged, _user_status, _online_devices} ->
         :ok
@@ -88,10 +87,20 @@ defmodule Application.Monitor do
   end
 
   def handle_cast({:monitor_handle_logout, %{device_id: device_id, eid: eid}}, state) do
-    # check 
+    PgDeviceCache.update_status(eid, device_id, "LOGOUT", "OFFLINE")
+    case StateChange.track_state_change(eid) do
+      {:changed, user_status, _online_devices} ->
+        device = PgDeviceCache.get(eid, device_id)
+        MonitorAppPresence.broadcast_awareness(device.eid, device.awareness_intention, user_status)
+        :ok
+      {:unchanged, _user_status, _online_devices} ->
+        IO.inspect({:unchanged})
+        :ok
+    end
     {:noreply, state}
   end
 
+  #still need to make adjustment to this
   @impl true
   def handle_info({:awareness_update, %Strucs.Awareness{} = awareness}, %{eid: eid} = state) do
     IO.inspect(awareness)
@@ -99,9 +108,9 @@ defmodule Application.Monitor do
     {:noreply, state}
   end
 
-  def handle_info({:direct_communication, message}, state) do
-    {:noreply, state}
-  end
+  # def handle_info({:direct_communication, message}, state) do
+  #   {:noreply, state}
+  # end
 
   # Catch-all for unexpected messages
   @impl true

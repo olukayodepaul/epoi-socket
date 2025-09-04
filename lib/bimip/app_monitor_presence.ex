@@ -12,6 +12,7 @@ defmodule Bicp.MonitorAppPresence do
   alias App.AllRegistry
   alias ApplicationServer.Configuration
   alias Storage.PgDeviceCache
+  alias Util.StatusMapper
   require Logger
 
   @pubsub ApplicationServer.PubSub
@@ -71,8 +72,13 @@ defmodule Bicp.MonitorAppPresence do
   # ------------------------------
   # Broadcast the owner's awareness to all subscribers/friends (once per eid)
   # ------------------------------
-  def broadcast_awareness(owner_eid, awareness_intention \\ 2, status \\ 1, latitude \\ 0.0 , longitude \\ 0.0) do
+  def broadcast_awareness(owner_eid, awareness_intention \\ 2, status, latitude \\ 0.0 , longitude \\ 0.0) do
+    
     table = init_table(owner_eid)
+
+    state_change_status = StatusMapper.to_int(status)
+    # IO.inspect(status, label: "Raw status atom")
+    # IO.inspect(state_change_status, label: "Mapped status code")
 
     friends =
       case :ets.lookup(table, :friends) do
@@ -86,7 +92,7 @@ defmodule Bicp.MonitorAppPresence do
     awareness = %Strucs.Awareness{
       owner_eid: owner_eid,
       friends: friends,
-      status: status,
+      status: state_change_status,
       last_seen: DateTime.utc_now() |> DateTime.truncate(:second),
       latitude: latitude,
       longitude: longitude,

@@ -68,7 +68,7 @@ defmodule Storage.PgDeviceCache do
             last_seen: now,
             status: "ONLINE",
             status_source: "LOGIN",
-            awareness_intention: 1
+            awareness_intention: 2
         }
 
         DbDelegator.save_device(updated_device)
@@ -156,8 +156,6 @@ defmodule Storage.PgDeviceCache do
   
   
 end
-
-
 
 
 #  # Get device from ETS only
