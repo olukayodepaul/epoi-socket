@@ -11,8 +11,8 @@ defmodule Local.DeviceStateChange do
   """
 
   require Logger
-  @stale_threshold_seconds 60 * 2
-  @force_change_seconds 60 * 30
+  @stale_threshold_seconds 60 * 3
+  @force_change_seconds 60 * 5
   alias App.AllRegistry
 
   # -------- ETS Setup --------

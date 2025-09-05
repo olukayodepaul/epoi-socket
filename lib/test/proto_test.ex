@@ -13,7 +13,6 @@ defmodule ProtoTest do
     # Decode with MessageScheme
     message = Bimip.MessageScheme.decode(binary)
 
-
     IO.inspect(message, label: "")
 
   end

@@ -14,7 +14,7 @@ defmodule Global.StateChange do
 
   alias Storage.PgDeviceCache
 
-  @stale_threshold_seconds 60 * 5 # filter out any device stay longer than this time without update
+  @stale_threshold_seconds 60 * 1 # filter out any device stay longer than this time without update
   @force_change_seconds 60 * 3   # 3 minutes stay idle for sometime, allow to resent status
 
   require Logger
@@ -91,8 +91,6 @@ defmodule Global.StateChange do
     })
   end
 
-  # --------- Public API ---------
-
   def track_state_change(owner_eid) do
     table = init_state_table(owner_eid)
     now = DateTime.utc_now()
@@ -100,6 +98,7 @@ defmodule Global.StateChange do
 
     case :ets.lookup(table, owner_eid) do
       [] ->
+        # First ever state insert
         update_state(table, owner_eid, user_status, online_devices, now)
         {:changed, user_status, online_devices}
 
@@ -111,18 +110,23 @@ defmodule Global.StateChange do
         idle_too_long? = DateTime.diff(now, prev_state.last_change_at) >= @force_change_seconds
 
         cond do
+          # (1) Only trigger changed if overall user status flipped
           prev_status != user_status ->
             update_state(table, owner_eid, user_status, online_devices, now)
             {:changed, user_status, online_devices}
 
-          user_status == :online and prev_ids != curr_ids ->
-            update_state(table, owner_eid, user_status, online_devices, now)
-            {:changed, user_status, online_devices}
+          # (2) If still same status, but device set changed → UNCHANGED (just update last_seen)
+          user_status == prev_status and prev_ids != curr_ids ->
+            bump_idle_time(table, owner_eid, prev_state, now)
+            {:unchanged, user_status, online_devices}
 
+          # (3) Force re-broadcast after too long idle time
           idle_too_long? ->
+            Logger.warning("Stale time change")
             update_last_changed(table, owner_eid, prev_state, now)
             {:changed, prev_status, prev_state.online_devices}
 
+          # (4) Nothing significant changed
           true ->
             bump_idle_time(table, owner_eid, prev_state, now)
             {:unchanged, user_status, online_devices}
@@ -130,37 +134,40 @@ defmodule Global.StateChange do
     end
   end
 
-  def schedule_termination_if_all_offline(%{eid: eid, current_timer: current_timer} =  state) do
+  def schedule_termination_if_all_offline(%{eid: eid, current_timer: current_timer} = state) do
     now = DateTime.utc_now()
     devices = Storage.PgDeviceCache.all(eid)
 
-    # Filter only ONLINE devices within the stale threshold
+    # Filter only ONLINE devices
     online_devices =
       devices
-      |> Enum.filter(fn d ->
-        d.status == "ONLINE" and DateTime.diff(now, d.last_seen) <= @stale_threshold_seconds
-      end)
+      |> Enum.filter(fn d -> d.status == "ONLINE" end)
 
     # Cancel previous timer if exists
     if current_timer, do: Process.cancel_timer(current_timer)
 
     if online_devices == [] do
-      # No online devices → compute latest last_seen, handle empty list safely
+      # No devices online → use last_seen of last offline device or now
       latest_last_seen =
         devices
         |> Enum.map(& &1.last_seen)
-        |> Enum.max(fn -> now end)  # if list empty, use now
+        |> Enum.max(fn -> now end)
 
-      # Calculate remaining grace period in milliseconds
+      # Adaptive grace period until user would be stale
       diff = DateTime.diff(now, latest_last_seen)
-      grace_period = max(@stale_threshold_seconds - diff, 0) * 1000
+      remaining_seconds = max(@stale_threshold_seconds - diff, 0)
+      grace_period_ms = remaining_seconds * 1000
 
-      Logger.warning("All devices offline. Scheduling termination in #{grace_period} ms.")
+      Logger.warning(
+        "All devices offline. Scheduling termination in #{grace_period_ms} ms " <>
+        "(stale_threshold: #{@stale_threshold_seconds}s, last_seen diff: #{diff}s)"
+      )
 
-      # Schedule termination
-      timer_ref = Process.send_after(self(), :terminate_process, grace_period)
+      # Schedule termination adaptively
+      timer_ref = Process.send_after(self(), :terminate_process, grace_period_ms)
       {:noreply, %{state | current_timer: timer_ref}}
     else
+      # At least one device is online → no termination needed
       Logger.info("There are still online devices. No termination scheduled.")
       {:noreply, %{state | current_timer: nil}}
     end

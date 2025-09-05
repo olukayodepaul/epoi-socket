@@ -42,6 +42,7 @@ defmodule Application.Monitor do
   # send notification to all subscribers
   @impl true
   def handle_cast({:m_setup_client_init, %{eid: eid, device_id: device_id, ws_pid: ws_pid}}, state) do
+    IO.inspect({"LOGIN", device_id})
     now = DateTime.utc_now() |> DateTime.truncate(:second)
     case PgDeviceCache.fetch(device_id, eid, ws_pid) do
       {:ok} -> :ok
@@ -66,45 +67,52 @@ defmodule Application.Monitor do
         #using what is inserte
         PgDeviceCache.save(device, eid)
     end
+    PgDeviceCache.update_status(eid, device_id, "LOGIN", "ONLINE")
     case StateChange.track_state_change(eid) do
       {:changed, user_status, _online_devices} ->
+        IO.inspect({:changed, user_status, 1})
         device = PgDeviceCache.get(eid, device_id)
         MonitorAppPresence.broadcast_awareness(device.eid, device.awareness_intention)
         :ok
-      {:unchanged, _user_status, _online_devices} ->
+      {:unchanged, user_status, _online_devices} ->
+        IO.inspect({:unchanged, user_status , 1})
         :ok
     end
-    StateChange.cancel_termination_if_all_offline(state)
+    
     {:noreply, state}
   end
 
   @impl true
   def handle_cast({:send_pong, {eid, device_id, status}}, state) do
-    PgDeviceCache.update_status(eid, device_id, "PONG", status)
+    Logger.warning("wfhqbvkr ejghiuerhnetrwjg werg8 ewoirgjoiwer8ug egjboe89uipg puayy8")
+    PgDeviceCache.update_status(eid, device_id, "PONG", "ONLINE")
     case StateChange.track_state_change(eid) do
       {:changed, user_status, _online_devices} ->
+        IO.inspect({:changed, user_status, 3})
         device = PgDeviceCache.get(eid, device_id)
-        MonitorAppPresence.broadcast_awareness(device.eid, device.awareness_intention, user_status)
+        MonitorAppPresence.broadcast_awareness(device.eid, device.awareness_intention)
         :ok
-      {:unchanged, _user_status, _online_devices} ->
+      {:unchanged, user_status, _online_devices} ->
+        IO.inspect({:unchanged, user_status , 3})
         :ok
     end
+    # StateChange.cancel_termination_if_all_offline(state)
     {:noreply, state}
   end
 
   def handle_cast({:monitor_handle_logout, %{device_id: device_id, eid: eid}}, state) do
-    IO.inspect("monitor_handle_logout here")
-    PgDeviceCache.update_status_without_last_see(eid, device_id, "LOGOUT", "OFFLINE")
-    StateChange.schedule_termination_if_all_offline(state)
+    PgDeviceCache.update_status(eid, device_id, "LOGOUT", "OFFLINE")
     case StateChange.track_state_change(eid) do
       {:changed, user_status, _online_devices} ->
-        IO.inspect({"chage monitor_handle_logout here", user_status})
+        IO.inspect({:changed, user_status, 3})
         device = PgDeviceCache.get(eid, device_id)
-        MonitorAppPresence.broadcast_awareness(device.eid, device.awareness_intention, user_status)
+        MonitorAppPresence.broadcast_awareness(device.eid, device.awareness_intention)
         :ok
-      {:unchanged, _user_status, _online_devices} ->
+      {:unchanged, user_status, _online_devices} ->
+        IO.inspect({:unchanged, user_status , 3})
         :ok
     end
+    StateChange.schedule_termination_if_all_offline(state)
     {:noreply, state}
   end
 
@@ -116,8 +124,11 @@ defmodule Application.Monitor do
   end
 
   def handle_info(:terminate_process, state) do
-    Logger.info("No activity during grace period. Terminating mother for #{state.eid}")
-    StateChange.cancel_termination_if_all_offline(state)
+    Logger.warning([
+      IO.ANSI.red(),
+      "No activity during grace period. Terminating monitor for #{state.eid}",
+      IO.ANSI.reset()
+    ])
     {:stop, :normal, state}
   end
 

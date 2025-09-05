@@ -33,8 +33,6 @@ defmodule App.AllRegistry do
     end
   end
 
- 
-
   def send_pong_to_server(device_id, eid, status \\ "ONLINE") do
     # we can check if the registry id global or local.
     case Horde.Registry.lookup(UserRegistry, eid) do
@@ -94,7 +92,6 @@ defmodule App.AllRegistry do
   end
 
   def terminate_child_process({eid, device_id}) do
-    IO.inspect("jncjdsn jdncjsdanc jdnacj. djsacihadsbc dsanciadjs ")
     case Horde.Registry.lookup(UserRegistry, eid) do
     [{pid, _}] ->
       GenServer.cast(pid, {:monitor_handle_logout, %{device_id: device_id, eid: eid}})
