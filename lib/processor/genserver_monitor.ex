@@ -72,7 +72,7 @@ defmodule Application.Monitor do
       {:changed, user_status, _online_devices} ->
         IO.inspect({:changed, user_status, 1})
         device = PgDeviceCache.get(eid, device_id)
-        MonitorAppPresence.broadcast_awareness(device.eid, device.awareness_intention)
+        MonitorAppPresence.broadcast_awareness(device.eid, device.awareness_intention, user_status)
         :ok
       {:unchanged, user_status, _online_devices} ->
         IO.inspect({:unchanged, user_status , 1})
@@ -84,13 +84,12 @@ defmodule Application.Monitor do
 
   @impl true
   def handle_cast({:send_pong, {eid, device_id, status}}, state) do
-    Logger.warning("wfhqbvkr ejghiuerhnetrwjg werg8 ewoirgjoiwer8ug egjboe89uipg puayy8")
     PgDeviceCache.update_status(eid, device_id, "PONG", "ONLINE")
     case StateChange.track_state_change(eid) do
       {:changed, user_status, _online_devices} ->
         IO.inspect({:changed, user_status, 3})
         device = PgDeviceCache.get(eid, device_id)
-        MonitorAppPresence.broadcast_awareness(device.eid, device.awareness_intention)
+        MonitorAppPresence.broadcast_awareness(device.eid, device.awareness_intention, user_status)
         :ok
       {:unchanged, user_status, _online_devices} ->
         IO.inspect({:unchanged, user_status , 3})
@@ -106,7 +105,7 @@ defmodule Application.Monitor do
       {:changed, user_status, _online_devices} ->
         IO.inspect({:changed, user_status, 3})
         device = PgDeviceCache.get(eid, device_id)
-        MonitorAppPresence.broadcast_awareness(device.eid, device.awareness_intention)
+        MonitorAppPresence.broadcast_awareness(device.eid, device.awareness_intention, user_status)
         :ok
       {:unchanged, user_status, _online_devices} ->
         IO.inspect({:unchanged, user_status , 3})
