@@ -10,10 +10,13 @@ defmodule Local.DeviceStateChange do
         * forced heartbeat triggers after idle too long
   """
 
-  require Logger
-  @stale_threshold_seconds 60 * 3
-  @force_change_seconds 60 * 5
   alias App.AllRegistry
+  alias ApplicationServer.Configuration
+  require Logger
+
+  @stale_threshold_seconds Configuration.client_stale_threshold_seconds()
+  @force_change_seconds Configuration.client_force_change_seconds()
+  
 
   # -------- ETS Setup --------
   defp table_name(eid, device_id),
@@ -23,8 +26,8 @@ defmodule Local.DeviceStateChange do
     table = table_name(eid, device_id)
 
     if :ets.whereis(table) == :undefined do
+      Logger.info("Created ETS table #{inspect(table)} for #{device_id}/#{eid}")
       :ets.new(table, [:set, :public, :named_table, read_concurrency: true])
-      Logger.info("Created ETS table #{inspect(table)} for #{eid}/#{device_id}")
     end
 
     table
@@ -82,17 +85,17 @@ defmodule Local.DeviceStateChange do
               last_seen: attrs.last_seen,
               last_activity: now
             }})
-            Logger.info("Device state changed from #{prev_status} -> #{curr_status} for #{eid}/#{device_id}")
+            Logger.warning("Client Device state changed from #{prev_status} -> #{curr_status} for #{eid}/#{device_id}")
             {:changed, curr_status}
 
           idle_too_long? ->
             :ets.insert(table, {key, %{prev_state | last_change_at: now, last_seen: attrs.last_seen, last_activity: now}})
-            Logger.info("Forced state refresh due to idle timeout for #{eid}/#{device_id} (state: #{curr_status})")
+            Logger.warning("Client Forced state refresh due to idle timeout for #{eid}/#{device_id} (state: #{curr_status})")
             {:refresh, prev_status}
 
           true ->
             :ets.insert(table, {key, %{prev_state | last_seen: attrs.last_seen}})
-            Logger.debug("Device state unchanged for #{eid}/#{device_id} (state: #{curr_status})")
+            Logger.warning("Client Device state unchanged for #{eid}/#{device_id} (state: #{curr_status})")
             {:unchanged, curr_status}
         end
     end
@@ -112,21 +115,7 @@ defmodule Local.DeviceStateChange do
         :not_found
     end
   end
-
-  def delete_table(device_id, eid) do
-    table = table_name(eid, device_id)
-
-    case :ets.whereis(table) do
-      :undefined ->
-        :ok
-
-      tid when is_reference(tid) ->
-        :ets.delete(tid)
-        Logger.info("Deleted ETS table #{inspect(table)} for #{eid}/#{device_id}")
-        :ok
-    end
-  end
-
 end
 
 
+# Local.DeviceStateChange.get("a@domain.com","aaaaa1")

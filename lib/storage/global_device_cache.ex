@@ -19,15 +19,6 @@ defmodule Storage.PgDeviceCache do
     :ok
   end
 
-  # Insert a device into ETS and persist asynchronously
-  def save(%PgDevicesSchema{} = device, eid) do
-    key = ets_key(device)
-    table = table_name(eid)
-    :ets.insert(table, {key, device})
-    Task.start(fn -> DbDelegator.save_device(device) end)
-    :ok
-  end
-
   # Fetch device from ETS, fallback to DB if missing, always update with current info
   def fetch(device_id, eid, sw_pid) do
     table = table_name(eid)
@@ -94,36 +85,15 @@ defmodule Storage.PgDeviceCache do
     |> Enum.map(fn {_key, device} -> device end)
   end
 
-  # def delete(eid, device_id) do
-  #   table = table_name(eid)
-  #   key = ets_key(eid, device_id)
-  #   case :ets.whereis(table) do
-  #     :undefined ->
-  #       :ok
-  #     _tid ->
-  #       :ets.delete(table, key)
-  #       _ = DbDelegator.delete_device(device_id)
-  #       :ok
-  #   end
-  # end
-
-  # def delete_only_ets(device_id, eid) do
-  #   table = table_name(eid)
-  #   case :ets.whereis(table) do
-  #   :undefined -> :ok  
-  #   _tid -> 
-  #     key = ets_key(eid, device_id)
-  #     :ets.delete(table, key)
-  #   end
-  # end
-
-
-
-  # # List devices by owner (eid)
-  # def all_by_owner(eid) do
-  #   all(eid)
-  #   |> Enum.filter(&(&1.eid == eid))
-  # end
+  def delete_only_ets(device_id, eid) do
+    table = table_name(eid)
+    case :ets.whereis(table) do
+      :undefined -> :ok  
+      _tid -> 
+        key = ets_key(eid, device_id)
+        :ets.delete(table, key)
+    end
+  end
 
   # # Update device status and last_seen//pong can also use this function
   def update_status(eid, device_id, status_source, status  \\ @online) do
@@ -149,7 +119,7 @@ defmodule Storage.PgDeviceCache do
     end
   end
 
-    # # Update device status and last_seen//pong can also use this function
+  # # Update device status and last_seen//pong can also use this function
   def update_status_without_last_see(eid, device_id, status_source, status  \\ @online) do
   
     table = table_name(eid)
@@ -190,6 +160,7 @@ end
 #     end
 #   end
 # Storage.PgDeviceCache.all("a@domain.com")
+# Storage.PgDeviceCache.delete_only_ets("a@domain.com", "aaaaa1")
 # Storage.PgDeviceCache.get("a@domain.com", "aaaaa1")
 # Storage.PgDeviceCache.all_by_owner("a@domain.com")
 # Storage.PgDeviceCache.update_status("a@domain.com", "aaaaa1", "PONG", "OFFLINE")

@@ -13,11 +13,10 @@ defmodule Global.StateChange do
   """
 
   alias Storage.PgDeviceCache
-
-  @stale_threshold_seconds 60 * 1 # filter out any device stay longer than this time without update
-  @force_change_seconds 60 * 3   # 3 minutes stay idle for sometime, allow to resent status
-
+  alias ApplicationServer.Configuration 
   require Logger
+
+  @stale_threshold_seconds Configuration.server_stale_threshold_seconds() # filter out any device stay longer than this time without update
 
   # --------- ETS Initialization ---------
   defp state_table_name(eid), do: String.to_atom("global_state_change_#{eid}")
@@ -77,13 +76,6 @@ defmodule Global.StateChange do
     })
   end
 
-  defp update_last_changed(table, owner_eid, prev_state, now) do
-    :ets.insert(table, {
-      owner_eid,
-      %{prev_state | last_change_at: now, last_seen: now}
-    })
-  end
-
   defp bump_idle_time(table, owner_eid, prev_state, now) do
     :ets.insert(table, {
       owner_eid,
@@ -107,8 +99,6 @@ defmodule Global.StateChange do
         prev_ids    = device_ids(prev_state.online_devices)
         curr_ids    = device_ids(online_devices)
 
-        idle_too_long? = DateTime.diff(now, prev_state.last_change_at) >= @force_change_seconds
-
         cond do
           # (1) Only trigger changed if overall user status flipped
           prev_status != user_status ->
@@ -119,12 +109,6 @@ defmodule Global.StateChange do
           user_status == prev_status and prev_ids != curr_ids ->
             bump_idle_time(table, owner_eid, prev_state, now)
             {:unchanged, user_status, online_devices}
-
-          # (3) Force re-broadcast after too long idle time
-          idle_too_long? ->
-            Logger.warning("Stale time change")
-            update_last_changed(table, owner_eid, prev_state, now)
-            {:changed, prev_status, prev_state.online_devices}
 
           # (4) Nothing significant changed
           true ->
@@ -180,6 +164,26 @@ defmodule Global.StateChange do
     end
     {:noreply, %{state | current_timer: nil}}
   end
+
+  def remaining_active_devices?(eid) do
+    now = DateTime.utc_now()
+    benchmark_time = DateTime.add(now, -@stale_threshold_seconds, :second)
+
+    Storage.PgDeviceCache.all(eid)
+    |> Enum.filter(fn d ->
+      d.status == "ONLINE" and
+        case d.last_seen do
+          nil -> false
+          last_seen -> DateTime.compare(last_seen, benchmark_time) == :gt
+        end
+    end)
+    |> case do
+      [] -> false
+      _ -> true
+    end
+  end
+
+  
 
 end
 

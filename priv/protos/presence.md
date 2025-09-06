@@ -68,7 +68,12 @@ message TextPayloadRequest {
   string message_id_local = 4;
   string text_size_count  = 5;
   int64 created_at        = 6;
+
+  // Optional fields for media attachments
+  string cdn_url_id       = 7;  // client-generated resource ID for image/file
+  int64 media_size_bytes  = 8;  // size of the media if attached
 }
+
 
 //using grpc for images on cdn servers. send to cdn server to upload image and return with thumbnail_url
 //note, generate the thumbnail_url from client.
@@ -79,11 +84,16 @@ message MediaPayloadRequest {
   string chat_id          = 4;
   int32  type             = 5;  // 1=image | 2=audio | 3=video | 4=file
   string caption          = 6;
-  string thumbnail_url    = 7;
   string cdn_url_id       = 8;
   int64 media_size_bytes  = 9;
   int64 created_at        = 10;
 }
+
+def generate_image_resource_id(username, device_id) do
+  timestamp = DateTime.utc_now() |> DateTime.to_unix(:millisecond)
+  random_hash = :crypto.strong_rand_bytes(6) |> Base.url_encode64(padding: false)
+  "#{username}-#{device_id}-#{timestamp}-#{random_hash}"
+end
 
 
 // ---------------- Acknowledgment ----------------

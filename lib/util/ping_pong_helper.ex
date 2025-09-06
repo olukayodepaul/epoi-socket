@@ -14,13 +14,8 @@ defmodule Util.PingPongHelper do
   alias App.AllRegistry
   alias Local.DeviceStateChange
 
-  # Maximum number of pongs before sending notification
   @max_pong_counter Configuration.max_pong_counter()
-
-  # Default ping interval (ms) if no RTT adaptation is applied
   @default_ping_interval Configuration.default_ping_interval() # ms
-
-  # Maximum allowed delay for a ping before forcing a check (seconds)
   @max_allowed_delay Configuration.max_allowed_delay()         # seconds
 
   @doc """
@@ -44,24 +39,24 @@ defmodule Util.PingPongHelper do
 
     now = DateTime.utc_now()
     delta = DateTime.diff(now, last_ping) # Time since last ping
-    last_state_change = Map.get(state, :last_state_change, DateTime.utc_now())
+    last_state_change = Map.get(state, :last_state_change, DateTime.utc_now()
+    )
 
     cond do
       # Ping is delayed too long → force ping and mark offline
       delta > @max_allowed_delay ->
-        Logger.warning("[#{device_id}] Ping delayed by #{delta}s, forcing ping and marking offline")
+        Logger.warning("Client0 [#{device_id}] Ping delayed by #{delta}s, forcing ping and marking offline")
         force_ping(device_id, ws_pid, eid, last_state_change, state)
 
       # Too many missed pongs → mark offline
       missed >= max_missed ->
-        Logger.warning("[#{device_id}] Missed pong limit reached (#{missed}/#{max_missed}), marking offline")
-        state_change(device_id, eid, "ONLINE", last_state_change, state)
-
+        Logger.warning("Client0 [#{device_id}] Missed ping limit reached (#{missed}/#{max_missed}), marking offline")
+        state_change(device_id, eid, "OFFLINE", last_state_change, state)
         {:noreply, %{state | missed_pongs: 0, pong_counter: 0, timer: now, last_rtt: nil}}
 
       # Normal case → send ping and increment counters
       true ->
-        Logger.info("[#{device_id}] Sending ping (missed_pongs=#{missed}, counter=#{counter})")
+        Logger.info("[Client0 #{device_id}] Sending ping (missed_pongs=#{missed}, counter=#{counter})")
         send(ws_pid, :send_ping)
         new_counter = increment_counter(counter, device_id, eid, last_state_change, state)
 
@@ -103,7 +98,7 @@ defmodule Util.PingPongHelper do
   # -------------------------
   defp increment_counter(counter, device_id, eid, last_state_change, state) do
     if counter + 1 >= @max_pong_counter do
-      Logger.debug("[#{device_id}] Pong counter limit reached, notifying monitor #{eid}")
+      Logger.debug("[#{device_id}] Ping counter limit reached, notifying monitor #{eid}")
       state_change(device_id, eid, "ONLINE", last_state_change, state)
       0
     else

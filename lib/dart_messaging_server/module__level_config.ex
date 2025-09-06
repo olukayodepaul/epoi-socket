@@ -21,6 +21,13 @@ defmodule ApplicationServer.Configuration do
   def default_ping_interval, do: get(:network_ping_pong)[:default_ping_interval]
   def initial_adaptive_max_missed, do: get(:network_ping_pong)[:initial_adaptive_max_missed]
 
+  #processor_state
+  def client_stale_threshold_seconds, do: get(:processor_state)[:stale_threshold_seconds]
+  def client_force_change_seconds, do: get(:processor_state)[:force_change_seconds]
+
+  #monitor_state
+  def server_stale_threshold_seconds, do: get(:monitor_state)[:stale_threshold_seconds]
+  def server_force_change_seconds, do: get(:monitor_state)[:force_change_seconds]
   
   
   defp get(key), do: Application.get_env(@app, key, [])

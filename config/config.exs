@@ -14,10 +14,19 @@ config :dart_messaging_server, :server,
 
 
 config :dart_messaging_server, :network_ping_pong,
-  max_pong_counter: 3,              # Still small so ONLINE status refreshes frequently
-  max_allowed_delay: 30_000,        # 40s, tolerates network hiccups before marking offline
-  default_ping_interval: 5_000,    # 10s, safe baseline (not too aggressive, not too slow)
-  initial_adaptive_max_missed: 3    # Miss 3 pongs (≈30s) before marking offline
+  default_ping_interval: 10_000,     # Ping every 10s → light but responsive
+  max_allowed_delay: 45,             # Allow up to 45s delay before forcing check
+  max_pong_counter: 3,               # Refresh ONLINE every ~30s (3 × 10s)
+  initial_adaptive_max_missed: 6     # 6 misses = ~60s silence → OFFLINE
+
+config :dart_messaging_server, :processor_state,
+  stale_threshold_seconds: 60 * 5,   # Device considered stale after 2 min without pong
+  force_change_seconds: 60 * 3     # Force a rebroadcast every 1 min idle
+
+config :dart_messaging_server, :monitor_state,
+  stale_threshold_seconds: 60 * 1,   # 60 * 20 User considered stale after 10 min no device activity
+  force_change_seconds: 60 * 15        # Force rebroadcast every 5 min idle
+
 
 config :dart_messaging_server,
   ecto_repos: [App.PgRepo]

@@ -152,7 +152,6 @@ end
 
   #terminate, send offline message.......
   def terminate(reason, _req, state) do
-    IO.inspect("sbcsdgabc jdcydgsab cdsk cdsakbciyasdcgbadschasudbnc hdsuaihc")
     TerminateHandler.handle_terminate(reason, state)
     :ok
   end

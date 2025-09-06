@@ -42,8 +42,6 @@ defmodule Application.Processor do
     PingPongHelper.pongs_received(device_id, receive_time, state)
   end
   
-
-
   def handle_cast({:processor_handle_ping_pong, data}, %{ ws_pid: ws_pid} = state) do
     #send state to parent that users in online
     msg = Bimip.MessageScheme.decode(data)
