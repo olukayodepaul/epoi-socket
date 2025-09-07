@@ -85,13 +85,38 @@ defmodule Storage.PgDeviceCache do
     |> Enum.map(fn {_key, device} -> device end)
   end
 
-  def delete_only_ets(device_id, eid) do
+  # def delete_only_ets(device_id, eid) do
+  #   table = table_name(eid)
+  #   case :ets.whereis(table) do
+  #     :undefined -> :ok  
+  #     _tid -> 
+  #       key = ets_key(eid, device_id)
+  #       :ets.delete(table, key)
+  #   end
+  # end
+
+  def mark_offline_and_delete(device_id, eid) do
     table = table_name(eid)
-    case :ets.whereis(table) do
-      :undefined -> :ok  
-      _tid -> 
-        key = ets_key(eid, device_id)
+    key = ets_key(eid, device_id)
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    case :ets.lookup(table, key) do
+      [{^key, device}] ->
+        updated_device = %PgDevicesSchema{
+          device
+          | status: "OFFLINE",
+            status_source: "LOGOUT",
+            last_seen: now,
+            last_activity: now
+        }
+
+        DbDelegator.save_device(updated_device)
         :ets.delete(table, key)
+
+        {:ok, updated_device.awareness_intention}
+
+      [] ->
+        {:ok, 0}
     end
   end
 

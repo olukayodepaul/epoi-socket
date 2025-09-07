@@ -118,7 +118,8 @@ defmodule Global.StateChange do
     end
   end
 
-  def schedule_termination_if_all_offline(%{eid: eid, current_timer: current_timer} = state) do
+  def schedule_termination_if_all_offline(%{eid: eid, current_timer: current_timer} = state, intent) do
+    IO.inspect({"intent", intent})
     now = DateTime.utc_now()
     devices = Storage.PgDeviceCache.all(eid)
 
@@ -148,7 +149,8 @@ defmodule Global.StateChange do
       )
 
       # Schedule termination adaptively
-      timer_ref = Process.send_after(self(), :terminate_process, grace_period_ms)
+      # timer_ref = Process.send_after(self(), :terminate_process, grace_period_ms)
+      timer_ref = Process.send_after(self(), {:terminate_process, intent}, grace_period_ms)
       {:noreply, %{state | current_timer: timer_ref}}
     else
       # At least one device is online → no termination needed
@@ -182,8 +184,6 @@ defmodule Global.StateChange do
       _ -> true
     end
   end
-
-  
 
 end
 
