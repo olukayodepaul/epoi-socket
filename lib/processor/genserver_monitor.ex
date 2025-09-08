@@ -8,6 +8,7 @@ defmodule Application.Monitor do
   alias Bicp.MonitorAppPresence
   alias Global.StateChange
   alias ApplicationServer.Configuration 
+  alias App.AllRegistry
 
   @force_change_seconds Configuration.server_force_change_seconds()
 
@@ -126,6 +127,11 @@ defmodule Application.Monitor do
       StateChange.schedule_termination_if_all_offline(state, intent)
     end
 
+    {:noreply, state}
+  end
+
+  def handle_cast({:monitor_send_subscriber_to_sender, {subscription_id, from_eid, to_eid, data}}, state) do
+    AllRegistry.send_subscriber_to_receiver(subscription_id, from_eid, to_eid, data)
     {:noreply, state}
   end
 

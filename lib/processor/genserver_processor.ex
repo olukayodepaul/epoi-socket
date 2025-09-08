@@ -79,7 +79,7 @@ defmodule Application.Processor do
     msg = Bimip.MessageScheme.decode(data)
     
     case msg.payload do
-      {:token_revoke_request,
+    {:token_revoke_request,
       %Bimip.TokenRevokeRequest{
         to: %Bimip.Identity{eid: eid, connection_resource_id: conn_res_id},
         token: token,
@@ -162,9 +162,7 @@ defmodule Application.Processor do
       _ ->
         # return error
         {:noreply, state}
-
     end
-
   end
 
   def handle_cast({:fan_out_to_children, {owner_device_id, eid, awareness}},   state) do
@@ -194,6 +192,54 @@ defmodule Application.Processor do
     {:noreply, state}
   end
 
+  def handle_cast({:processor_subscribe_request, data}, state) do
+
+    msg = Bimip.MessageScheme.decode(data)
+    case msg.payload do
+
+      {:subscribe_request,
+      %Bimip.SubscribeRequest{
+        from: %Bimip.Identity{eid: from_eid, connection_resource_id: _conn_res_id},
+        to: %Bimip.Identity{eid: to_eid, connection_resource_id: _conn_res_id},
+        subscription_id: subscription_id,
+        timestamp: _timestamp,
+        one_way: _one_way
+      }} ->
+        #send the to:GenServer.
+        AllRegistry.send_subscriber_to_sender(subscription_id, from_eid, to_eid, data)
+        {:noreply, state}
+      _ ->
+        IO.inspect(msg, label: "Unexpected payload in token revoke")
+        {:noreply, state}
+
+    end
+
+  end
+
+  def handle_cast({:processor_subscribe_response, data}, state) do
+    msg = Bimip.MessageScheme.decode(data)
+    
+    case msg.payload do
+
+      {:subscribe_response,
+      %Bimip.SubscribeResponse{
+        from: %Bimip.Identity{eid: from_eid, connection_resource_id: _conn_res_id},
+        to: %Bimip.Identity{eid: to_eid, connection_resource_id: _conn_res_id},
+        status: status,
+        message: message,
+        subscription_id: subscription_id,
+        one_way: one_way,
+        timestamp: timestamp
+      }} ->
+        IO.inspect({status, message})
+        {:noreply, state}
+      _ ->
+        IO.inspect(msg, label: "Unexpected payload in token revoke")
+        {:noreply, state}
+
+    end
+    
+  end
 
   # Terminate device session
   @impl true

@@ -2,6 +2,7 @@ defmodule App.AllRegistry do
 
   require Logger
   alias ApplicationServer.Configuration
+  alias OfflineQueue
   
   def setup_client_init({eid, device_id, ws_pid}) do
     case Horde.Registry.lookup(UserRegistry, eid) do
@@ -106,4 +107,51 @@ defmodule App.AllRegistry do
     end
   end
 
+  #subscriber request and response. 
+  def handle_subscribe_request_registry(%{device_id: device_id} = state, data) do
+    case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
+    [{pid, _}] ->
+      GenServer.cast(pid, {:processor_subscribe_request, data})
+      :ok
+    [] ->
+      Logger.warning("2 No registry entry for #{device_id}, cannot maybe_start_mother")
+      :error
+    end
+  end
+
+  def handle_subscribe_response_registry(%{device_id: device_id} = state, data) do
+    case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
+    [{pid, _}] ->
+      GenServer.cast(pid, {:processor_subscribe_response, data})
+      :ok
+    [] ->
+      Logger.warning("2 No registry entry for #{device_id}, cannot maybe_start_mother")
+      :error
+    end
+  end
+
+  def send_subscriber_to_sender(subscription_id, from_eid, to_eid, data) do
+    case Horde.Registry.lookup(UserRegistry, from_eid) do
+    [{pid, _}] ->
+      GenServer.cast(pid, {:monitor_send_subscriber_to_sender, {subscription_id, from_eid, to_eid, data}})
+      :ok
+    [] ->
+      Logger.warning("2 No registry entry for #{to_eid}, cannot maybe_start_mother")
+      :error
+    end
+  end
+
+  def send_subscriber_to_receiver(subscription_id, from_eid, to_eid, data) do
+    case Horde.Registry.lookup(UserRegistry,  to_eid) do
+    [{pid, _}] ->
+      GenServer.cast(pid, {:monitor_send_subscriber_to_receiver, {to_eid, data}})
+      :ok
+    [] ->
+      OfflineQueue.enqueue(subscription_id, from_eid, to_eid , data)
+      :error
+    end
+  end
+
 end
+
+

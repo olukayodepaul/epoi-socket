@@ -69,39 +69,44 @@ message TokenRevokeResponse {
   string reason = 4;      // optional: provides explanation if status=FAILED
 }
 
-
 // ---------------- SubscribeRequest ----------------
-// Used when a user (`from`) requests to subscribe to another user’s presence/updates.
-// NOTE: `from` and `to` MUST only use `eid`. 
-// The `connection_resource_id` MUST be nil (not set).
+// A user (from) requests to connect with another user (to).
+// The `subscription_id` uniquely identifies this subscription attempt.
+// Note: Only `eid` is needed in Identity for subscription.
+// Default behavior is **two-way mutual subscription**.
+// If `one_way=true`, only the sender will see the target's updates; target won't automatically see sender's updates.
 message SubscribeRequest {
-  Identity from = 1;          // The user initiating the subscription (eid only)
-  Identity to = 2;            // The user being subscribed to (eid only)
-  string group = 3;           // Optional grouping/category (e.g., "Family", "Work")
-  int64 timestamp = 4;        // Time the request was created
+  Identity from = 1;           // Request sender (A)
+  Identity to = 2;             // Target user (B)
+  string subscription_id = 3;  // Unique ID for this subscription (UUID or client-generated)
+  bool one_way = 4;            // Optional: true = one-way subscription; default=false (two-way)
+  int64 timestamp = 5;         // When the request was sent
 }
 
 // ---------------- SubscribeResponse ----------------
-// Sent back to confirm whether the subscription request succeeded or failed.
-// NOTE: `from` and `to` MUST only use `eid`. 
-// The `connection_resource_id` MUST be nil (not set).
+// The target user (to) accepts or rejects a subscription request.
+// Linked to the original request via `subscription_id`.
+// `one_way` echoes the subscription type chosen by the requester.
 message SubscribeResponse {
-  Identity from = 1;          // The requester (eid only)
-  Identity to = 2;            // The target being subscribed to (eid only)
-  int32 status = 3;           // 1=SUCCESS, 2=FAILED
-  string message = 4;         // Human-readable status info
-  int64 timestamp = 5;        // Time the response was generated
+  Identity from = 1;           // The responder (B)
+  Identity to = 2;             // Original requester (A)
+  int32 status = 3;            // 1=ACCEPTED, 2=REJECTED
+  string message = 4;          // Optional reason (e.g., "User rejected request")
+  string subscription_id = 6;  // Matches SubscribeRequest.subscription_id
+  bool one_way = 6;            // True if subscription is one-way, false if two-way (default)
+  int64 timestamp = 7;         // Response time
 }
-
 
 // ---------------- UnsubscribeRequest ----------------
 // Used when a user (`from`) unsubscribes from another user (`to`) to stop receiving updates.
+// For two-way subscriptions, removal can be mutual by default.
 // NOTE: `from` and `to` MUST only use `eid`.
 // The `connection_resource_id` MUST be nil (not set).
 message UnsubscribeRequest {
-  Identity from = 1;          // The user initiating the unsubscribe (eid only)
-  Identity to = 2;            // The user being unsubscribed from (eid only)
-  int64 timestamp = 3;        // Time the request was created
+  Identity from = 1;                 // The user initiating the unsubscribe (eid only)
+  Identity to = 2;                   // The user being unsubscribed from (eid only)
+  int64 timestamp = 3;               // Time the request was created
+  bool force_two_way_removal = 4;    // Optional: true to remove both sides even if one-way subscription
 }
 
 // ---------------- UnsubscribeResponse ----------------
@@ -114,9 +119,8 @@ message UnsubscribeResponse {
   int32 status = 3;           // 1=SUCCESS, 2=FAILED
   string message = 4;         // Human-readable status info
   int64 timestamp = 5;        // Time the response was generated
+  bool two_way_removed = 6;   // True if both sides were removed; false if only initiator side removed
 }
-
-
 
 
 // ---------------- MessageScheme ----------------
@@ -125,16 +129,15 @@ message MessageScheme {
   int64 route = 1;  // Unique route identifier for message routing
 
   oneof payload {
-    AwarenessNotification awareness_notification  = 1;  // User awareness/presence update
-    //2-3
-    PingPong ping_pong                            = 4;
-    TokenRevokeRequest token_revoke_request       = 5;
-    TokenRevokeResponse token_revoke_response     = 6;
-    SubscribeRequest subscribe_request            = 7;
-    SubscribeResponse subscribe_response          = 8;
-    UnsubscribeRequest unsubscribe_request        = 9;
-    UnsubscribeResponse unsubscribe_response      = 10;
-    Logout logout                                 = 11; // Logout message
-    ErrorMessage error                            = 12; // Error message
+    AwarenessNotification awareness_notification  = 2;  // User awareness/presence update
+    PingPong ping_pong                            = 3;
+    TokenRevokeRequest token_revoke_request       = 4;
+    TokenRevokeResponse token_revoke_response     = 5;
+    SubscribeRequest subscribe_request            = 6;
+    SubscribeResponse subscribe_response          = 7;
+    UnsubscribeRequest unsubscribe_request        = 8;
+    UnsubscribeResponse unsubscribe_response      = 9;
+    Logout logout                                 = 10; // Logout message
+    ErrorMessage error                            = 11; // Error message
   }
 }

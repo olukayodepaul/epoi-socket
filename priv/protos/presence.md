@@ -127,3 +127,18 @@ message MessageScheme {
 
 
 ```
+
+```
+AwarenessNotification awareness_notification  = 1;  // User awareness/presence update
+AwarenessResponse awareness_response          = 2;
+AwarenessRequest awareness_request            = 3;
+PingPong ping_pong                            = 4;
+TokenRevokeRequest token_revoke_request       = 5;
+TokenRevokeResponse token_revoke_response     = 6;
+SubscribeRequest subscribe_request            = 7;
+SubscribeResponse subscribe_response          = 8;
+UnsubscribeRequest unsubscribe_request        = 9;
+UnsubscribeResponse unsubscribe_response      = 10;
+Logout logout                                 = 11; // Logout message
+ErrorMessage error                            = 12; // Error message
+```

@@ -93,8 +93,8 @@ defmodule DartMessagingServer.Socket do
     %{
       4  => &handle_ping_pong/2,
       5  => &handle_token_revoke_request/2,
-      7  => &subscribe_request/2,
-      9  => &unsubscribe_request/2,
+      6  => &subscribe_request/2,
+      7  => &subscribe_response/2,
       11 => &handle_logout/2
     }
   end
@@ -115,41 +115,31 @@ defmodule DartMessagingServer.Socket do
     {:ok, state}
   end
 
-#     send(self(), :terminate_socket)
-#     {:reply, {:binary, binary}, state}
+  defp subscribe_request(state, data) do
+    AllRegistry.handle_subscribe_request_registry(state, data)
+    {:ok, state}
+  end
 
-# -----------------------
-# Handler implementations
-# -----------------------
-# defp handle_awareness_request(state, data) do
-#   msg = Dartmessaging.MessageScheme.decode(data)
-#   IO.inspect(msg.payload, label: "AwarenessRequest payload")
-#   # Send payload to GenServer for processing
-#   # GenServer.cast(PayloadProcessor, {:process_awareness_request, msg.payload, device_id, eid})
-# end
+  defp subscribe_response(state, data) do
+    AllRegistry.handle_subscribe_response_registry(state, data)
+    {:ok, state}
+  end
 
-
-
-
-# defp handle_subscriber_add_request(state, data) do
-#   msg = Dartmessaging.MessageScheme.decode(data)
-#   IO.inspect(msg.payload, label: "TokenRevoke payload")
-#   # GenServer.cast(PayloadProcessor, {:process_token_revoke, msg.payload, device_id, eid})
-# end
-
-
-defp default_handler(%{ eid: eid, device_id: device_id} = state, data) do
-  Logger.error("Unknown route received for device #{device_id}, eid #{eid}")
-  {:ok, state}
-end
+  defp default_handler(%{ eid: eid, device_id: device_id} = state, data) do
+    Logger.error("Unknown route received for device #{device_id}, eid #{eid}")
+    {:ok, state}
+  end
 
   # -----------------------
   # Only decode the route field for fast dispatch
   # -----------------------
   defp safe_decode_route(data) do
     try do
-      msg = Bimip.MessageScheme.decode(data)
-      {:ok, msg.route}
+      with %Bimip.MessageScheme{route: route} <- Bimip.MessageScheme.decode(data) do
+        {:ok, route}
+      else
+        _ -> {:error, :invalid_route}
+      end
     rescue
       e -> {:error, e}
     end
