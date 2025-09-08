@@ -80,21 +80,25 @@ defmodule App.AllRegistry do
     end
   end
 
-  def handle_logout_monitor_and_socket(%{ device_id: device_id, eid: eid, ws_pid: ws_pid, binary: binary}) do
+  def handle_logout_terminate(%{ ws_pid: ws_pid, binary: binary}) do
     send(ws_pid, {:custome_binary, binary})
-    case Horde.Registry.lookup(UserRegistry, eid) do
-      [{pid, _}] ->
-        GenServer.cast(pid, {:monitor_handle_logout, %{device_id: device_id, eid: eid}})
-        :ok
-      [] ->
-        :error
-    end
   end
 
   def terminate_child_process({eid, device_id}) do
     case Horde.Registry.lookup(UserRegistry, eid) do
     [{pid, _}] ->
       GenServer.cast(pid, {:monitor_handle_logout, %{device_id: device_id, eid: eid}})
+      :ok
+    [] ->
+      Logger.warning("2 No registry entry for #{device_id}, cannot maybe_start_mother")
+      :error
+    end
+  end
+
+  def handle_token_revoke_request_registry(%{device_id: device_id} = state, data) do
+    case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
+    [{pid, _}] ->
+      GenServer.cast(pid, {:processor_handle_token_revoke_request, data})
       :ok
     [] ->
       Logger.warning("2 No registry entry for #{device_id}, cannot maybe_start_mother")

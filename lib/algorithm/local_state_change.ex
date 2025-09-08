@@ -115,6 +115,26 @@ defmodule Local.DeviceStateChange do
         :not_found
     end
   end
+
+  @doc """
+  Delete the ETS table for a given device.
+  Use when the device is terminated/logged out completely.
+  """
+  def delete_table(eid, device_id) do
+    table = table_name(eid, device_id)
+
+    case :ets.whereis(table) do
+      :undefined ->
+        Logger.info("No ETS table to delete for #{eid}/#{device_id}")
+        :ok
+
+      tid when is_reference(tid) or is_integer(tid) ->
+        :ets.delete(table)
+        Logger.info("Deleted ETS table #{inspect(table)} for #{eid}/#{device_id}")
+        :ok
+    end
+  end
+  
 end
 
 

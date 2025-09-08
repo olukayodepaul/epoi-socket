@@ -86,42 +86,39 @@ defmodule Application.Monitor do
   end
 
   # @impl true
-  def handle_cast({:send_pong, {_eid, _device_id, _status}}, %{force_stale: force_stale} = state) do
+  def handle_cast({:send_pong, {eid, device_id, status}}, %{force_stale: force_stale} = state) do
     
-    # Logger.warning("Reach by server pong 1 #{device_id}")
-    # now = DateTime.utc_now()
-    # PgDeviceCache.update_status(eid, device_id, "PONG", "ONLINE")
-    # case StateChange.track_state_change(eid) do
-    #   {:changed, user_status, _online_devices} ->
+    Logger.warning("Reach by server pong 1 #{device_id}")
+    now = DateTime.utc_now()
+    PgDeviceCache.update_status(eid, device_id, "PONG", "ONLINE")
+    case StateChange.track_state_change(eid) do
+      {:changed, user_status, _online_devices} ->
         
-    #     Logger.warning("Reach by server pong 2 #{device_id}")
-    #     IO.inspect({:changed, user_status, 3})
-    #     device = PgDeviceCache.get(eid, device_id)
-    #     MonitorAppPresence.broadcast_awareness(device.eid, device.awareness_intention, user_status)
-    #     {:noreply, %{state | force_stale: now}}
+        Logger.warning("Reach by server pong 2 #{device_id}")
+        IO.inspect({:changed, user_status, 3})
+        device = PgDeviceCache.get(eid, device_id)
+        MonitorAppPresence.broadcast_awareness(device.eid, device.awareness_intention, user_status)
+        {:noreply, %{state | force_stale: now}}
 
-    #   {:unchanged, user_status, _online_devices} ->
-    #     Logger.warning("Reach by server pong 3 #{device_id}")
+      {:unchanged, user_status, _online_devices} ->
+        Logger.warning("Reach by server pong 3 #{device_id}")
 
-    #     idle_too_long? = DateTime.diff(now, force_stale) >= @force_change_seconds
+        idle_too_long? = DateTime.diff(now, force_stale) >= @force_change_seconds
 
-    #     if idle_too_long? do
-    #         Logger.warning("Reach by server pong 4 #{device_id}")
-    #         device = PgDeviceCache.get(eid, device_id)
-    #         MonitorAppPresence.broadcast_awareness(device.eid, device.awareness_intention, user_status)
-    #         {:noreply, %{state | force_stale: now}}
-    #     else
-    #         {:noreply, state}
-    #     end
-    # end
-    StateChange.cancel_termination_if_all_offline(state)
-    {:noreply, state}
+        if idle_too_long? do
+            Logger.warning("Reach by server pong 4 #{device_id}")
+            device = PgDeviceCache.get(eid, device_id)
+            MonitorAppPresence.broadcast_awareness(device.eid, device.awareness_intention, user_status)
+            {:noreply, %{state | force_stale: now}}
+        else
+            {:noreply, state}
+        end
+    end
   end
 
   def handle_cast({:monitor_handle_logout, %{device_id: device_id, eid: eid}}, state) do
 
     {:ok, intent} = PgDeviceCache.mark_offline_and_delete(device_id, eid)
-    IO.inspect({"1 intent", intent})
 
     if StateChange.remaining_active_devices?(eid) do
       StateChange.cancel_termination_if_all_offline(state)
@@ -152,8 +149,6 @@ defmodule Application.Monitor do
         {:noreply, %{state | current_timer: nil}}
     end
   end
-
-  
 
   # Catch-all for unexpected messages
   @impl true

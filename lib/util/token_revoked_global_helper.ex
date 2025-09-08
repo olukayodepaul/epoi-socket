@@ -17,10 +17,15 @@ defmodule Util.TokenRevoked do
   end
 
   def revoked?(jti) do
-    case Redix.command!(:redix, ["HEXISTS", "token_revocation", jti]) do
+
+    case Redix.command!(:redix, ["EXISTS", "revoked:#{jti}"]) do
       1 -> true
       0 -> false
     end
   end
 
 end
+
+#redis-cli
+#KEYS revoked:*
+#GET revoked:31hgn2glfr71f94ke4000221

@@ -17,8 +17,12 @@ defmodule DartMessagingServer.Socket do
         {:reason, :invalid_token} -> ConnectionsHelper.reject(req, :invalid_token)
         {:ok, claims} -> 
           case TokenRevoked.revoked?(claims["jti"]) do
-            false -> ConnectionsHelper.accept(req, claims)
-            true -> ConnectionsHelper.reject(req,"Token revoked")
+            false -> 
+              IO.inspect({false , claims["jti"]})
+              ConnectionsHelper.accept(req, claims)
+            true -> 
+              IO.inspect({true , claims["jti"]})
+              ConnectionsHelper.reject(req,"Token revoked")
           end 
       end
     {:error, :invalid_token} ->  ConnectionsHelper.reject(req, :invalid_token)
@@ -41,14 +45,14 @@ defmodule DartMessagingServer.Socket do
     {:ok, state}
   end
 
-  def websocket_info(:terminate_socket, state) do
-    {:stop, state}
-  end
-
   def websocket_info({:custome_binary, binary}, state) do
     Logger.info("Sending awareness frame to client dhbcdsgcvdsbcjhsad jdshvcigdsy")
     send(self(), :terminate_socket)
     {:reply, {:binary, binary}, state}
+  end
+
+  def websocket_info(:terminate_socket, state) do
+    {:stop, state}
   end
 
   def websocket_info({:binary, binary}, state) do
@@ -65,6 +69,7 @@ defmodule DartMessagingServer.Socket do
   end
 
   def websocket_handle({:binary, data},  state) do
+
     if data == <<>> do
       Logger.error("Received empty binary")
       {:ok, state}
@@ -86,25 +91,29 @@ defmodule DartMessagingServer.Socket do
   # Map route numbers to handler functions
   defp dispatch_map do
     %{
-      # 4  => &handle_awareness_request/2,
-      6  => &handle_ping_pong/2,
-      # 7  => &handle_token_revoke_request/2,
-      # 9  => &handle_subscriber_add_request/2,
-      12 => &handle_logout/2    #implementing loggout
+      4  => &handle_ping_pong/2,
+      5  => &handle_token_revoke_request/2,
+      7  => &subscribe_request/2,
+      9  => &unsubscribe_request/2,
+      11 => &handle_logout/2
     }
   end
 
-  defp handle_ping_pong(%{eid: eid, device_id: device_id} = state, data) do
+  defp handle_ping_pong(state, data) do
     AllRegistry.handle_ping_pong_registry(state, data)
     {:ok, state}
   end
 
   #check the request type and other data. if not match then report error....
-  defp handle_logout(%{eid: eid, device_id: device_id} = state, data) do
+  defp handle_logout(state, data) do
     AllRegistry.handle_handle_logout_registry(state, data)
     {:ok, state}
   end
 
+  defp handle_token_revoke_request(state, data) do
+    AllRegistry.handle_token_revoke_request_registry(state, data)
+    {:ok, state}
+  end
 
 #     send(self(), :terminate_socket)
 #     {:reply, {:binary, binary}, state}
@@ -120,11 +129,7 @@ defmodule DartMessagingServer.Socket do
 # end
 
 
-# defp handle_token_revoke_request(state, data) do
-#   msg = Dartmessaging.MessageScheme.decode(data)
-#   IO.inspect(msg.payload, label: "TokenRevoke payload")
-#   # GenServer.cast(PayloadProcessor, {:process_token_revoke, msg.payload, device_id, eid})
-# end
+
 
 # defp handle_subscriber_add_request(state, data) do
 #   msg = Dartmessaging.MessageScheme.decode(data)
@@ -138,17 +143,17 @@ defp default_handler(%{ eid: eid, device_id: device_id} = state, data) do
   {:ok, state}
 end
 
-# -----------------------
-# Only decode the route field for fast dispatch
-# -----------------------
-defp safe_decode_route(data) do
-  try do
-    msg = Bimip.MessageScheme.decode(data)
-    {:ok, msg.route}
-  rescue
-    e -> {:error, e}
+  # -----------------------
+  # Only decode the route field for fast dispatch
+  # -----------------------
+  defp safe_decode_route(data) do
+    try do
+      msg = Bimip.MessageScheme.decode(data)
+      {:ok, msg.route}
+    rescue
+      e -> {:error, e}
+    end
   end
-end
 
   #terminate, send offline message.......
   def terminate(reason, _req, state) do

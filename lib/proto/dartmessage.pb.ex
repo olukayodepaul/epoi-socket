@@ -59,6 +59,28 @@ defmodule Bimip.PingPong do
   field :ping_id, 5, type: :string, json_name: "pingId"
 end
 
+defmodule Bimip.TokenRevokeRequest do
+  @moduledoc false
+
+  use Protobuf, protoc_gen_elixir_version: "0.15.0", syntax: :proto3
+
+  field :to, 1, type: Bimip.Identity
+  field :token, 2, type: :string
+  field :timestamp, 3, type: :int64
+  field :reason, 4, type: :string
+end
+
+defmodule Bimip.TokenRevokeResponse do
+  @moduledoc false
+
+  use Protobuf, protoc_gen_elixir_version: "0.15.0", syntax: :proto3
+
+  field :to, 1, type: Bimip.Identity
+  field :status, 2, type: :int32
+  field :timestamp, 3, type: :int64
+  field :reason, 4, type: :string
+end
+
 defmodule Bimip.MessageScheme do
   @moduledoc false
 
@@ -74,6 +96,17 @@ defmodule Bimip.MessageScheme do
     oneof: 0
 
   field :ping_pong, 6, type: Bimip.PingPong, json_name: "pingPong", oneof: 0
+
+  field :token_revoke_request, 7,
+    type: Bimip.TokenRevokeRequest,
+    json_name: "tokenRevokeRequest",
+    oneof: 0
+
+  field :token_revoke_response, 8,
+    type: Bimip.TokenRevokeResponse,
+    json_name: "tokenRevokeResponse",
+    oneof: 0
+
   field :logout, 12, type: Bimip.Logout, oneof: 0
   field :error, 15, type: Bimip.ErrorMessage, oneof: 0
 end

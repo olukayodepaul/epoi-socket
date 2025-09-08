@@ -1,10 +1,11 @@
 defmodule Application.Processor do
   use GenServer
   require Logger
-  alias Util.{RegistryHelper, PingPongHelper}
+  alias Util.{RegistryHelper, PingPongHelper, TokenRevoked}
   alias App.AllRegistry
   alias ApplicationServer.Configuration
   alias Local.DeviceStateChange
+  alias Security.TokenVerifier
 
   # Start GenServer for device session
   def start_link({_eid, device_id, _ws_pid} = state) do
@@ -60,7 +61,7 @@ defmodule Application.Processor do
         }
 
         response_msg = %Bimip.MessageScheme{
-          route: 6,
+          route: 4,
           payload: {:ping_pong, pong_response}
         }
 
@@ -72,6 +73,61 @@ defmodule Application.Processor do
         {:noreply, state}
     end
     
+  end
+
+  def handle_cast({:processor_handle_token_revoke_request, data}, %{ ws_pid: ws_pid} = state) do
+    msg = Bimip.MessageScheme.decode(data)
+    
+    case msg.payload do
+      {:token_revoke_request,
+      %Bimip.TokenRevokeRequest{
+        to: %Bimip.Identity{eid: eid, connection_resource_id: conn_res_id},
+        token: token,
+        timestamp: timestamp,
+        reason: reason
+      }} ->
+        with {:ok, claims} <- Security.TokenVerifier.verify_token(token),
+            jti when is_binary(jti) <- Map.get(claims, "jti"),
+            exp when is_integer(exp) <- Map.get(claims, "exp") do
+
+          TokenRevoked.store_revocation(jti, exp)
+
+          revoke_response = %Bimip.TokenRevokeResponse{
+            to: %Bimip.Identity{
+              eid: eid,
+              connection_resource_id: conn_res_id
+            },
+            status: 2,
+            timestamp: System.system_time(:millisecond),
+            reason: reason
+          }
+
+          response_msg = %Bimip.MessageScheme{
+            route: 6,
+            payload: {:token_revoke_response, revoke_response}
+          }
+          
+          binary = Bimip.MessageScheme.encode(response_msg)
+          DeviceStateChange.delete_table(eid, conn_res_id)
+          AllRegistry.handle_logout_terminate(%{ws_pid: ws_pid, binary: binary})
+          AllRegistry.terminate_child_process({eid, conn_res_id})
+
+          {:noreply, state}
+        else
+          {:error, reason} ->
+            IO.inspect(reason, label: "Token verification failed")
+            {:noreply, state}
+
+          _ ->
+            IO.inspect("Missing jti in token", label: "Token revoke error")
+            {:noreply, state}
+        end
+
+      _ ->
+        IO.inspect(msg, label: "Unexpected payload in token revoke")
+        {:noreply, state}
+    end
+
   end
 
   def handle_cast( {:processor_handle_logout, data}, %{ device_id: device_id, eid: eid, ws_pid: ws_pid} = state) do
@@ -92,14 +148,15 @@ defmodule Application.Processor do
 
         # Wrap in MessageScheme
         response_msg = %Bimip.MessageScheme{
-          route: 12, # Logical route for Logout
+          route: 11,
           payload: {:logout, logout_response}
         }
 
-        # Encode and send as reply while stopping socket
+        # # Encode and send as reply while stopping socket
         binary = Bimip.MessageScheme.encode(response_msg)
-        AllRegistry.handle_logout_monitor_and_socket(%{ device_id: device_id, eid: eid, ws_pid: ws_pid, binary: binary})
-        DeviceStateChange.delete_table(device_id, eid)
+        DeviceStateChange.delete_table(eid, device_id)
+        AllRegistry.handle_logout_terminate(%{ws_pid: ws_pid, binary: binary})
+        AllRegistry.terminate_child_process({eid, device_id})
         {:stop, :normal, state}
       
       _ ->
@@ -107,6 +164,7 @@ defmodule Application.Processor do
         {:noreply, state}
 
     end
+
   end
 
   def handle_cast({:fan_out_to_children, {owner_device_id, eid, awareness}},   state) do
@@ -123,7 +181,7 @@ defmodule Application.Processor do
 
     # Wrap it in MessageScheme using route
     message = %Bimip.MessageScheme{
-      route: 1,  # Define route number for AwarenessNotification
+      route: 1,  
       payload: {:awareness_notification, notification}
     }
 

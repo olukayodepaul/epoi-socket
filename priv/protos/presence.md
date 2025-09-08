@@ -17,44 +17,7 @@ message AwarenessResponse {
   int64 timestamp = 8;
 }
 
-message TokenRevokeRequest {
-  Identity to = 1;
-  string token = 2;
-  int64 timestamp = 3;
-}
 
-message TokenRevokeResponse {
-  Identity to = 1;
-  int32 status = 2;       // 1=SUCCESS, 2=FAILED
-  int64 timestamp = 3;
-}
-
-message SubscriberAddRequest {
-  Identity owner = 1;
-  Identity subscriber = 2;
-  string nickname = 3;
-  string group = 4;
-  string subscriber_resource_id = 5;
-  int64 timestamp = 6;
-}
-
-message SubscriberAddResponse {
-  Identity owner = 1;
-  Identity subscriber = 2;
-  string subscriber_resource_id = 3;
-  int32 status = 4;       // 1=SUCCESS, 2=FAILED
-  string message = 5;
-  int64 timestamp = 6;
-}
-
-message BlockSubscriber {
-  Identity owner = 1;
-  Identity subscriber = 2;
-  int32 type = 3;           // 1=REQUEST, 2=RESPONSE
-  int32 status = 4;         // 1=SUCCESS, 2=FAILED (if RESPONSE)
-  string message = 5;
-  int64 timestamp = 6;
-}
 
 
 
@@ -153,13 +116,14 @@ message MessageScheme {
     TokenRevokeRequest token_revoke_request = 7;
     TokenRevokeResponse token_revoke_response = 8;
     SubscriberAddRequest subscriber_add_request = 9;
-    SubscriberAddResponse subscriber_add_response = 10;
-    BlockSubscriber block_subscriber = 11;
+
     Logout logout = 12;
     TextPayloadRequest text_payload_request = 13
     MediaPayloadRequest media_payload_request = 14;
   }
 }
+
+
 
 
 ```

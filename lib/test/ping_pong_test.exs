@@ -67,3 +67,5 @@ end
 # iex -S mix
 # c("lib/test/ping_pong_test.exs")
 # PingPongTest.run_simulation()
+
+c("lib/test/proto_test.exs")
