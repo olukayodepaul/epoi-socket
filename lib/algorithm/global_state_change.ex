@@ -187,24 +187,22 @@ defmodule Global.StateChange do
   end
 
   # Process 7
-  def fan_out_subscribers_to_processor(eid, data) do
+  def monitor_fan_out_relay(eid, data) do
     
     {status, devices} = user_status_with_devices(eid)
 
     case status do
       :online ->
         Enum.each(devices, fn device ->
-          AllRegistry.fan_out_subscribers(device.device_id, data)
+          AllRegistry.process_fan_out_relay(device.device_id, data)
         end)
 
       :offline ->
         Logger.info("User #{eid} is offline, storing in queue")
-        # Save inside B
+        # S
         # OfflineQueue.enqueue("sub-#{UUID.uuid4()}", "system@domain.com", owner_eid, data)
     end
   end
-
-
 
 end
 

@@ -107,20 +107,6 @@ defmodule App.AllRegistry do
     end
   end
 
- 
-
-  def handle_subscribe_response_registry(%{device_id: device_id} = state, data) do
-    case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
-    [{pid, _}] ->
-      GenServer.cast(pid, {:processor_subscribe_response, data})
-      :ok
-    [] ->
-      Logger.warning("2 No registry entry for #{device_id}, cannot maybe_start_mother")
-      :error
-    end
-  end
-
-
   # from socket child genserver prossessor : # Process 1
   def handle_subscribe_request_registry(%{device_id: device_id} = state, data) do
     case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
@@ -159,20 +145,56 @@ defmodule App.AllRegistry do
   end
 
   # Process 8
-  def fan_out_subscribers(device_id, data) do
+  def process_fan_out_relay(device_id, data) do
     case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
       [{pid, _}] ->
         Logger.debug("Fanning out to device #{device_id}")
-        GenServer.cast(pid, {:fan_out_subscribers_to_processor, data})
+        GenServer.cast(pid, {:process_fan_out_relay, data})
       [] ->
         Logger.warning("Device #{device_id} not alive in registry (DB says ONLINE)")
     end
   end
 
   # Process 9
-  def fan_out_subscribers_to_interface(ws_pid, data) do
+  def socker_fan_out_relay(ws_pid, data) do
     send(ws_pid, {:binary, data})
   end
+
+  #pr 1
+  def handle_subscribe_response_registry(%{device_id: device_id} = state, data) do
+    case Horde.Registry.lookup(DeviceIdRegistry, device_id) do
+    [{pid, _}] ->
+      GenServer.cast(pid, {:processor_subscribe_response, data})
+      :ok
+    [] ->
+      Logger.warning("2 No registry entry for #{device_id}, cannot maybe_start_mother")
+      :error
+    end
+  end
+  
+  def send_subscriber_response_to_monitor(status, one_way, subscription_id, from_eid, to_eid, data) do
+    case Horde.Registry.lookup(UserRegistry, from_eid) do
+    [{pid, _}] ->
+      GenServer.cast(pid, {:monitor_send_subscriber_response_to_monitor, {status, one_way, subscription_id, from_eid, to_eid, data}})
+      :ok
+    [] ->
+      Logger.warning("2 No registry entry for #{to_eid}, cannot maybe_start_mother")
+      :error
+    end
+  end
+
+  #pr 3
+  def send_subscriber_response_to_receiver(status, one_way, subscription_id, from_eid, to_eid, data) do
+    case Horde.Registry.lookup(UserRegistry, to_eid) do
+    [{pid, _}] ->
+      GenServer.cast(pid, {:send_subscriber_response_to_sender_server, {status, one_way, subscription_id, from_eid, to_eid, data}})
+      :ok
+    [] ->
+      OfflineQueue.enqueue(subscription_id, from_eid, to_eid , data)
+      :error
+    end
+  end
+
 
 end
 

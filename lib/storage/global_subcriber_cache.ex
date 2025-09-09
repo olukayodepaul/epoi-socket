@@ -1,6 +1,7 @@
 defmodule Storage.GlobalSubscriberCache do
 
-  alias Storage.DbDelegator
+
+  alias Storage.{DbDelegator,PgSubscriberSchema}
 
   # Build ETS table name per owner
   def table_name(eid), do: String.to_atom("global_subscriber_#{eid}")
@@ -15,6 +16,18 @@ defmodule Storage.GlobalSubscriberCache do
       :ets.new(table, [:set, :public, :named_table, read_concurrency: true])
     end
 
+    :ok
+  end
+
+  @doc """
+  Save a new subscriber (DB + ETS cache).
+  """
+ # Insert a device into ETS and persist asynchronously
+  def save(%PgSubscriberSchema{} = subscriber) do
+    # key = ets_key(subscriber)
+    # table = table_name(eid)
+    # :ets.insert(table, {key, device})
+    Task.start(fn -> DbDelegator.save_subscriber(subscriber) end)
     :ok
   end
 

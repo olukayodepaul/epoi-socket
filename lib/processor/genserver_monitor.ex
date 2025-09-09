@@ -3,12 +3,13 @@ defmodule Application.Monitor do
   require Logger
 
   alias DartMessagingServer.DynamicSupervisor
-  alias Util.{RegistryHelper}
+  alias Util.{RegistryHelper, SaveBidirectional}
   alias Storage.{GlobalSubscriberCache, PgDeviceCache, PgDevicesSchema}
   alias Bicp.MonitorAppPresence
   alias Global.StateChange
   alias ApplicationServer.Configuration 
   alias App.AllRegistry
+
 
   @force_change_seconds Configuration.server_force_change_seconds()
 
@@ -68,6 +69,7 @@ defmodule Application.Monitor do
           awareness_intention: 2,
           inserted_at: now
         }
+        
         PgDeviceCache.save(device, eid)
     end
     Logger.warning("Reach by server longin 1 #{device_id}")
@@ -130,6 +132,24 @@ defmodule Application.Monitor do
     {:noreply, state}
   end
 
+  #pr 3
+  def handle_cast({:monitor_send_subscriber_response_to_monitor, {status, one_way, subscription_id, from_eid, to_eid, data}}, state) do
+    AllRegistry.send_subscriber_response_to_receiver(status, one_way, subscription_id, from_eid, to_eid, data)
+    {:noreply, state}
+  end
+
+  #pr 5
+  def handle_cast({:send_subscriber_response_to_sender_server, {status, one_way, subscription_id, from_eid, to_eid, data}}, state) do
+    #make sure to register the subscriber
+
+    case status do
+      1 -> SaveBidirectional.save_bidirectional_subscription(from_eid, to_eid)
+      _ -> :ok
+    end
+    # StateChange.monitor_fan_out_relay(to_eid, data)
+    {:noreply, state}
+  end
+
   #receive from Child. # Process 4
   def handle_cast({:monitor_send_subscriber_to_sender, {subscription_id, from_eid, to_eid, data}}, state) do
     AllRegistry.send_subscriber_to_receiver(subscription_id, from_eid, to_eid, data)
@@ -138,7 +158,7 @@ defmodule Application.Monitor do
 
   #receive from Child. # Process 6
   def handle_cast({:monitor_send_subscriber_to_receiver, {to_eid, data}}, state) do
-    StateChange.fan_out_subscribers_to_processor(to_eid, data)
+    StateChange.monitor_fan_out_relay(to_eid, data)
     {:noreply, state}
   end
 

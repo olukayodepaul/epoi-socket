@@ -234,6 +234,7 @@ defmodule Application.Processor do
         timestamp: timestamp
       }} ->
         IO.inspect({status, message})
+        AllRegistry.send_subscriber_response_to_monitor(status, one_way,subscription_id, from_eid, to_eid, data)
         {:noreply, state}
       _ ->
         IO.inspect(msg, label: "Unexpected payload in token revoke")
@@ -242,10 +243,9 @@ defmodule Application.Processor do
     end
     
   end
-  
-  # Terminate device session
-  def handle_cast({:fan_out_subscribers_to_processor, data}, %{ws_pid: ws_pid} = state) do
-    AllRegistry.fan_out_subscribers_to_interface(ws_pid, data)
+
+  def handle_cast({:process_fan_out_relay, data}, %{ws_pid: ws_pid} = state) do
+    AllRegistry.socker_fan_out_relay(ws_pid, data)
     {:noreply, state}
   end
 

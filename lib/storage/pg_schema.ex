@@ -63,7 +63,7 @@ defmodule Storage.PgSubscriberSchema  do
     subscriber
     |> cast(attrs, [:owner_eid, :subscriber_eid, :status, :inserted_at, :awareness_status])
     |> validate_required([:owner_eid, :subscriber_eid, :status])
-    |> validate_inclusion(:status, ["ONLINE", "BUSY", "DO_NOT_DISTURB", "OFFLINE"])
+    |> validate_inclusion(:status, ["active", "block"])  # matches DB constraint
     |> unique_constraint([:owner_eid, :subscriber_eid], name: :subscriber_owner_eid_subscriber_eid_index)
   end
 end

@@ -120,6 +120,7 @@ defmodule DartMessagingServer.Socket do
     {:ok, state}
   end
 
+  #pr 1
   defp subscribe_response(state, data) do
     AllRegistry.handle_subscribe_response_registry(state, data)
     {:ok, state}
