@@ -191,17 +191,15 @@ hex    = Base.encode16(binary, case: :upper)
 ```SubscribeRequest
 
 
-subscribe_request = %Bimip.SubscribeResponse{
+subscribe_request = %Bimip.SubscribeRequest{
   from: %Bimip.Identity{
     eid: "a@domain.com",
     connection_resource_id: nil
   },
   to: %Bimip.Identity{
-    eid: "b@domain.com",
+    eid: "d@domain.com",
     connection_resource_id: nil
   },
-  status: 1,
-  message: "user information",
   subscription_id: "ancisdcsad",
   one_way: false,
   timestamp: System.system_time(:millisecond)
@@ -209,8 +207,8 @@ subscribe_request = %Bimip.SubscribeResponse{
 
 # Wrap in MessageScheme
 is_subscribe_request = %Bimip.MessageScheme{
-  route: 7,
-  payload: {:subscribe_response, subscribe_request}
+  route: 6,
+  payload: {:subscribe_request, subscribe_request}
 }
 
 binary = Bimip.MessageScheme.encode(is_subscribe_request)

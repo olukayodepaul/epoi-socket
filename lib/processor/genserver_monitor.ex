@@ -130,8 +130,15 @@ defmodule Application.Monitor do
     {:noreply, state}
   end
 
+  #receive from Child. # Process 4
   def handle_cast({:monitor_send_subscriber_to_sender, {subscription_id, from_eid, to_eid, data}}, state) do
     AllRegistry.send_subscriber_to_receiver(subscription_id, from_eid, to_eid, data)
+    {:noreply, state}
+  end
+
+  #receive from Child. # Process 6
+  def handle_cast({:monitor_send_subscriber_to_receiver, {to_eid, data}}, state) do
+    StateChange.fan_out_subscribers_to_processor(to_eid, data)
     {:noreply, state}
   end
 
@@ -144,15 +151,20 @@ defmodule Application.Monitor do
 
   @impl true
   def handle_info({:terminate_process, intent}, state) do
-    case Storage.PgDeviceCache.all(state.eid) do
-      [] ->
-        Logger.warning("No devices left. Terminating monitor for #{state.eid}")
-        MonitorAppPresence.broadcast_awareness(state.eid, intent, :offline)
-        {:stop, :normal, state}
+    devices =
+      Storage.PgDeviceCache.all(state.eid)
+      |> Enum.filter(&(&1.status == "ONLINE"))
 
-      devices ->
-        Logger.warning("Termination skipped. Still #{length(devices)} device(s) active for #{state.eid}")
-        {:noreply, %{state | current_timer: nil}}
+    if devices == [] do
+      Logger.warning("No online devices left. Terminating monitor for #{state.eid}")
+      MonitorAppPresence.broadcast_awareness(state.eid, intent, :offline)
+      {:stop, :normal, state}
+    else
+      Logger.warning(
+        "Termination skipped. Still #{length(devices)} device(s) ONLINE for #{state.eid}"
+      )
+
+      {:noreply, %{state | current_timer: nil}}
     end
   end
 

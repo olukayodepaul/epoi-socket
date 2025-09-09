@@ -19,6 +19,15 @@ defmodule Storage.PgDeviceCache do
     :ok
   end
 
+  # Insert a device into ETS and persist asynchronously
+  def save(%PgDevicesSchema{} = device, eid) do
+    key = ets_key(device)
+    table = table_name(eid)
+    :ets.insert(table, {key, device})
+    Task.start(fn -> DbDelegator.save_device(device) end)
+    :ok
+  end
+
   # Fetch device from ETS, fallback to DB if missing, always update with current info
   def fetch(device_id, eid, sw_pid) do
     table = table_name(eid)

@@ -14,6 +14,7 @@ defmodule Global.StateChange do
 
   alias Storage.PgDeviceCache
   alias ApplicationServer.Configuration 
+  alias App.AllRegistry
   require Logger
 
   @stale_threshold_seconds Configuration.server_stale_threshold_seconds() # filter out any device stay longer than this time without update
@@ -119,7 +120,7 @@ defmodule Global.StateChange do
   end
 
   def schedule_termination_if_all_offline(%{eid: eid, current_timer: current_timer} = state, intent) do
-    IO.inspect({"intent", intent})
+
     now = DateTime.utc_now()
     devices = Storage.PgDeviceCache.all(eid)
 
@@ -184,6 +185,26 @@ defmodule Global.StateChange do
       _ -> true
     end
   end
+
+  # Process 7
+  def fan_out_subscribers_to_processor(eid, data) do
+    
+    {status, devices} = user_status_with_devices(eid)
+
+    case status do
+      :online ->
+        Enum.each(devices, fn device ->
+          AllRegistry.fan_out_subscribers(device.device_id, data)
+        end)
+
+      :offline ->
+        Logger.info("User #{eid} is offline, storing in queue")
+        # Save inside B
+        # OfflineQueue.enqueue("sub-#{UUID.uuid4()}", "system@domain.com", owner_eid, data)
+    end
+  end
+
+
 
 end
 

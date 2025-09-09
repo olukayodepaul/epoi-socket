@@ -56,3 +56,4 @@ defmodule OfflineQueue do
 
 end
 # OfflineQueue.fetch("b@domain.com")
+OfflineQueue.flush_all()

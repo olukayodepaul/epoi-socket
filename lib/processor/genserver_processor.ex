@@ -192,6 +192,7 @@ defmodule Application.Processor do
     {:noreply, state}
   end
 
+  # Process 2
   def handle_cast({:processor_subscribe_request, data}, state) do
 
     msg = Bimip.MessageScheme.decode(data)
@@ -217,6 +218,7 @@ defmodule Application.Processor do
   end
 
   def handle_cast({:processor_subscribe_response, data}, state) do
+    
     msg = Bimip.MessageScheme.decode(data)
     
     case msg.payload do
@@ -240,9 +242,13 @@ defmodule Application.Processor do
     end
     
   end
-
+  
   # Terminate device session
-  @impl true
+  def handle_cast({:fan_out_subscribers_to_processor, data}, %{ws_pid: ws_pid} = state) do
+    AllRegistry.fan_out_subscribers_to_interface(ws_pid, data)
+    {:noreply, state}
+  end
+
   def handle_cast({:processor_terminate_device, {device_id, eid}}, state) do
     AllRegistry.terminate_child_process({eid, device_id})
     {:stop, :normal, state}
