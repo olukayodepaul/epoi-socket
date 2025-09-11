@@ -9,7 +9,7 @@ defmodule Application.Monitor do
   alias Global.StateChange
   alias ApplicationServer.Configuration 
   alias App.AllRegistry
-
+  alias  QueueSystem
 
   @force_change_seconds Configuration.server_force_change_seconds()
 
@@ -84,6 +84,7 @@ defmodule Application.Monitor do
         Logger.warning("Reach by server longin 3 #{device_id}")
         :ok
     end
+    QueueSystem.fanout_results(:offline, eid)
     StateChange.cancel_termination_if_all_offline(state)
     {:noreply, state}
   end
@@ -140,13 +141,31 @@ defmodule Application.Monitor do
 
   #pr 5
   def handle_cast({:send_subscriber_response_to_sender_server, {status, one_way, subscription_id, from_eid, to_eid, data}}, state) do
-    #make sure to register the subscriber
-
+    IO.inspect("bhjdsbcdsjbncds djkbncsdb fs sn jks b n sojf bsfib dso; hdfsb  vaigfsbv ")
+    IO.inspect({subscription_id, from_eid})
     case status do
-      1 -> SaveBidirectional.save_bidirectional_subscription(from_eid, to_eid)
-      _ -> :ok
+      1 -> 
+        case QueueSystem.exists?(:sub, subscription_id, to_eid) do
+        true ->
+          IO.puts("Subscription already exists bcjhdbcd jdcdbc dcdhcbdhc")
+          SaveBidirectional.save_bidirectional_subscription(from_eid, to_eid)
+          StateChange.monitor_fan_out_relay(to_eid, data)
+          QueueSystem.delete(:sub, subscription_id, to_eid)
+          :ok
+        false ->
+          IO.puts("false Subscription already exists bcjhdbcd jdcdbc dcdhcbdhc")
+          # Record does not exist, enqueue it
+          :ok
+        end
+        
+        # compare data that where save
+      _ -> 
+
+        :ok
+      
     end
-    # StateChange.monitor_fan_out_relay(to_eid, data)
+    
+
     {:noreply, state}
   end
 
@@ -158,6 +177,7 @@ defmodule Application.Monitor do
 
   #receive from Child. # Process 6
   def handle_cast({:monitor_send_subscriber_to_receiver, {to_eid, data}}, state) do
+    IO.inspect({"last place bhdHEDFGYUEGF", to_eid, state.eid })
     StateChange.monitor_fan_out_relay(to_eid, data)
     {:noreply, state}
   end
@@ -171,6 +191,7 @@ defmodule Application.Monitor do
 
   @impl true
   def handle_info({:terminate_process, intent}, state) do
+    IO.inspect("Terminate")
     devices =
       Storage.PgDeviceCache.all(state.eid)
       |> Enum.filter(&(&1.status == "ONLINE"))
@@ -180,10 +201,11 @@ defmodule Application.Monitor do
       MonitorAppPresence.broadcast_awareness(state.eid, intent, :offline)
       {:stop, :normal, state}
     else
+      #use here to pull out from the mnesia db
       Logger.warning(
         "Termination skipped. Still #{length(devices)} device(s) ONLINE for #{state.eid}"
       )
-
+      QueueSystem.fanout_results(:offline, state.eid)
       {:noreply, %{state | current_timer: nil}}
     end
   end

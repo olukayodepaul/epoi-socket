@@ -1,11 +1,8 @@
 defmodule Bicp.MonitorAppPresence do
   @moduledoc """
-  Mother-level module for user presence and awareness using dynamic ETS tables per `eid`.
-
-  Handles subscriptions and broadcasts at the `eid` level.
-  Each `eid` has its own ETS table storing its friends/subscribers.
+  Handles user presence and awareness.
   Fetches subscriber/friend list dynamically from `Storage.GlobalSubscriberCache`.
-  Each `eid` broadcasts only once; all friends subscribed to this `eid` topic will receive updates.
+  Broadcasts status to all subscribers via PubSub.
   """
 
   alias Phoenix.PubSub
@@ -18,16 +15,19 @@ defmodule Bicp.MonitorAppPresence do
   @pubsub ApplicationServer.PubSub
 
   # ------------------------------
-  # Initialize dynamic ETS table for a given owner_eid
+  # Subscribe the current owner to all friends' topics
   # ------------------------------
-  def init_table(owner_eid) do
-    table = table_name(owner_eid)
+  def subscribe_to_friends(owner_eid) do
+    friends = fetch_friends(owner_eid)
 
-    if :ets.whereis(table) == :undefined do
-      :ets.new(table, [:set, :public, :named_table, read_concurrency: true])
-    end
+    Enum.each(friends, fn friend_eid ->
+      topic = "#{Configuration.awareness_topic()}:#{friend_eid}"
+      :ok = PubSub.subscribe(@pubsub, topic)
+    end)
 
-    table
+    Logger.debug(
+      "[Awareness] owner=#{owner_eid} subscribed to #{length(friends)} friends: #{inspect(friends)}"
+    )
   end
 
   def user_level_subscribtion(eid) do
@@ -40,54 +40,12 @@ defmodule Bicp.MonitorAppPresence do
     Phoenix.PubSub.broadcast(@pubsub, topic, {:direct_communication, message})
   end
 
-  defp table_name(owner_eid) do
-    String.to_atom("monitor_app_presence_#{owner_eid}")
-  end
-
   # ------------------------------
-  # Subscribe the current owner to all friends' topics
+  # Broadcast the owner's awareness to all subscribers/friends
   # ------------------------------
-  def subscribe_to_friends(owner_eid) do
-    table = init_table(owner_eid)
-
-    friends =
-      case :ets.lookup(table, :friends) do
-        [{:friends, cached_friends}] -> cached_friends
-        [] ->
-          fetched = fetch_friends(owner_eid)
-          :ets.insert(table, {:friends, fetched})
-          fetched
-      end
-
-    Enum.each(friends, fn friend_eid ->
-      topic = "#{Configuration.awareness_topic()}:#{friend_eid}"
-      :ok = PubSub.subscribe(@pubsub, topic)
-    end)
-
-    Logger.debug(
-      "[Awareness] owner=#{owner_eid} subscribed to #{length(friends)} friends: #{inspect(friends)}"
-    )
-  end
-
-  # ------------------------------
-  # Broadcast the owner's awareness to all subscribers/friends (once per eid)
-  # ------------------------------
-  def broadcast_awareness(owner_eid, awareness_intention \\ 2, status \\ :online, latitude \\ 0.0 , longitude \\ 0.0) do
-    
-    table = init_table(owner_eid)
-
+  def broadcast_awareness(owner_eid, awareness_intention \\ 2, status \\ :online, latitude \\ 0.0, longitude \\ 0.0) do
     state_change_status = StatusMapper.to_int(status)
-    # IO.inspect(status, label: "Raw status atom")
-    # IO.inspect(state_change_status, label: "Mapped status code")
-
-    friends =
-      case :ets.lookup(table, :friends) do
-        [{:friends, cached_friends}] -> cached_friends
-        [] ->
-          fetched = fetch_friends(owner_eid)
-          :ets.insert(table, {:friends, fetched})
-          fetched
-      end
+    friends = fetch_friends(owner_eid)
 
     awareness = %Strucs.Awareness{
       owner_eid: owner_eid,
@@ -105,12 +63,11 @@ defmodule Bicp.MonitorAppPresence do
       "[Awareness] Broadcasting owner=#{owner_eid} status=#{awareness.status} to topic=#{topic}"
     )
 
-    # Single broadcast per owner
     Phoenix.PubSub.broadcast(@pubsub, topic, {:awareness_update, awareness})
   end
 
   # ------------------------------
-  # Internal helper to fetch friends/subscribers from DB
+  # Fetch friends/subscribers directly from GlobalSubscriberCache
   # ------------------------------
   defp fetch_friends(owner_eid) do
     case Storage.GlobalSubscriberCache.fetch_subscriber_by_owners_eid(owner_eid) do
@@ -124,18 +81,9 @@ defmodule Bicp.MonitorAppPresence do
   end
 
   # ------------------------------
-  # Optional: Force refresh friends list from DB and update ETS
+  # Fan out awareness to all online child GenServers
   # ------------------------------
-  def refresh_friends(owner_eid) do
-    table = init_table(owner_eid)
-    friends = fetch_friends(owner_eid)
-    :ets.insert(table, {:friends, friends})
-    friends
-  end
-
-  # ------------------------------
-  # Fan out awareness to all online child GenServers for this owner
-  # ------------------------------
+  # leave these untouched
   def fan_out_to_children(owner_eid, %Strucs.Awareness{} = awareness) do
     PgDeviceCache.all(owner_eid)
     |> Enum.filter(fn d -> d.status == "ONLINE" and not is_nil(d.eid) end)
@@ -147,12 +95,7 @@ defmodule Bicp.MonitorAppPresence do
     |> Stream.run()
   end
 
-  # Send awareness to child GenServer which will relay to socket
   defp send_to_child(device_id, eid, %Strucs.Awareness{} = awareness) do
     AllRegistry.fan_out_to_children(device_id, eid, awareness)
   end
-
-
 end
-
-

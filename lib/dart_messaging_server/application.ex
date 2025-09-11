@@ -89,11 +89,11 @@ defmodule DartMessagingServer.Application do
     case :mnesia.table_info(:offline_subscriptions, :attributes) do
       :undefined ->
         case :mnesia.create_table(:offline_subscriptions, [
-               {:attributes, [:subscription_id, :from_eid, :to_eid, :payload, :timestamp]},
-               {:disc_copies, [node()]},
-               {:type, :set},
-               {:index, [:to_eid]}
-             ]) do
+              {:attributes, [:id, :subscription_id, :from_eid, :to_eid, :payload, :timestamp]},
+              {:disc_copies, [node()]},
+              {:type, :set},
+              {:index, [:to_eid]}
+            ]) do
           {:atomic, :ok} ->
             Logger.info("✅ Mnesia table :offline_subscriptions created")
 

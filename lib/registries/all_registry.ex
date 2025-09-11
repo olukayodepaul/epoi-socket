@@ -2,7 +2,7 @@ defmodule App.AllRegistry do
 
   require Logger
   alias ApplicationServer.Configuration
-  alias OfflineQueue
+  alias QueueSystem
   
   def setup_client_init({eid, device_id, ws_pid}) do
     case Horde.Registry.lookup(UserRegistry, eid) do
@@ -136,10 +136,13 @@ defmodule App.AllRegistry do
     IO.inspect({subscription_id, from_eid, to_eid, data})
     case Horde.Registry.lookup(UserRegistry, to_eid) do
     [{pid, _}] ->
+      IO.inspect("is is one")
+      QueueSystem.enqueue(subscription_id, from_eid, to_eid , nil, :sub)
       GenServer.cast(pid, {:monitor_send_subscriber_to_receiver, {to_eid, data}})
       :ok
     [] ->
-      OfflineQueue.enqueue(subscription_id, from_eid, to_eid , data)
+      IO.inspect("is is two")
+      QueueSystem.enqueue(subscription_id, from_eid, to_eid , data)
       :error
     end
   end
@@ -190,11 +193,10 @@ defmodule App.AllRegistry do
       GenServer.cast(pid, {:send_subscriber_response_to_sender_server, {status, one_way, subscription_id, from_eid, to_eid, data}})
       :ok
     [] ->
-      OfflineQueue.enqueue(subscription_id, from_eid, to_eid , data)
+      # OfflineQueue.enqueue(subscription_id, from_eid, to_eid , data)
       :error
     end
   end
-
 
 end
 

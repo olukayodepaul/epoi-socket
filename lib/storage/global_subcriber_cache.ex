@@ -22,12 +22,28 @@ defmodule Storage.GlobalSubscriberCache do
   @doc """
   Save a new subscriber (DB + ETS cache).
   """
- # Insert a device into ETS and persist asynchronously
+  # Insert a device into ETS and persist asynchronously
   def save(%PgSubscriberSchema{} = subscriber) do
-    # key = ets_key(subscriber)
-    # table = table_name(eid)
-    # :ets.insert(table, {key, device})
-    Task.start(fn -> DbDelegator.save_subscriber(subscriber) end)
+    table = table_name(subscriber.owner_eid)
+    # Ensure ETS table exists
+    if :ets.whereis(table) == :undefined do
+      :ets.new(table, [:set, :public, :named_table, read_concurrency: true])
+    end
+
+    key = "subscriber_list#{subscriber.owner_eid}"
+
+    subscribers =
+      case :ets.lookup(table, key) do
+        [{^key, list}] -> list
+        [] -> []
+      end
+
+    # Avoid duplicates
+    subscribers = Enum.reject(subscribers, fn s -> s.subscriber_eid == subscriber.subscriber_eid end)
+
+    # Insert subscriber
+    :ets.insert(table, {key, [subscriber | subscribers]})
+
     :ok
   end
 
@@ -58,77 +74,78 @@ defmodule Storage.GlobalSubscriberCache do
     end
   end
 
-  # ------------------------------
-  # Subscribers Information
-  # ------------------------------
+  # # ------------------------------
+  # # Subscribers Information
+  # # ------------------------------
 
-  defp device_key(owner_id, subscriber_id, device_id),
-    do: "device_#{owner_id}_#{subscriber_id}_#{device_id}"
+  # defp device_key(owner_id, subscriber_id, device_id), do: "device_#{owner_id}_#{subscriber_id}_#{device_id}"
 
-  @doc """
-  Insert or update a device awareness record for a subscriber.
-  """
-  def put_subscriber_device(owner_id, subscriber_id, device_id, status, latitude, longitude, last_seen \\ DateTime.utc_now()) do
-    table = table_name(owner_id)
+  # @doc """
+  # Insert or update a device awareness record for a subscriber.
+  # """
+  # def put_subscriber_device(owner_id, subscriber_id, device_id, status, latitude, longitude, last_seen \\ DateTime.utc_now()) do
+  #   table = table_name(owner_id)
 
-    record = %{
-      owner_id: owner_id,
-      subscriber_id: subscriber_id,
-      device_id: device_id,
-      status: status,
-      latitude: latitude,
-      longitude: longitude,
-      last_seen: last_seen
-    }
+  #   record = %{
+  #     owner_id: owner_id,
+  #     subscriber_id: subscriber_id,
+  #     device_id: device_id,
+  #     status: status,
+  #     latitude: latitude,
+  #     longitude: longitude,
+  #     last_seen: last_seen
+  #   }
 
-    :ets.insert(table, {device_key(owner_id, subscriber_id, device_id), record})
-    {:ok, record}
-  end
+  #   :ets.insert(table, {device_key(owner_id, subscriber_id, device_id), record})
+  #   {:ok, record}
+  # end
 
-  @doc """
-  Update an existing device record. If not exists, insert it.
-  """
-  def update_subscriber_device(owner_id, subscriber_id, device_id, status, latitude, longitude, last_seen \\ DateTime.utc_now()) do
-    put_subscriber_device(owner_id, subscriber_id, device_id, status, latitude, longitude, last_seen)
-  end
+  # @doc """
+  # Update an existing device record. If not exists, insert it.
+  # """
+  # def update_subscriber_device(owner_id, subscriber_id, device_id, status, latitude, longitude, last_seen \\ DateTime.utc_now()) do
+  #   put_subscriber_device(owner_id, subscriber_id, device_id, status, latitude, longitude, last_seen)
+  # end
 
-  @doc """
-  Fetch a single device record.
-  """
-  def get_subscriber_device(owner_id, subscriber_id, device_id) do
-    table = table_name(owner_id)
+  # @doc """
+  # Fetch a single device record.
+  # """
+  # def get_subscriber_device(owner_id, subscriber_id, device_id) do
+  #   table = table_name(owner_id)
 
-    case :ets.lookup(table, device_key(owner_id, subscriber_id, device_id)) do
-      [{_, record}] -> {:ok, record}
-      [] -> {:error, :not_found}
-    end
-  end
+  #   case :ets.lookup(table, device_key(owner_id, subscriber_id, device_id)) do
+  #     [{_, record}] -> {:ok, record}
+  #     [] -> {:error, :not_found}
+  #   end
+  # end
 
-  @doc """
-  Fetch all devices for a subscriber.
-  Returns a list of device maps.
-  """
-  def fetch_subscriber_devices(owner_id, subscriber_id) do
-    table = table_name(owner_id)
+  # @doc """
+  # Fetch all devices for a subscriber.
+  # Returns a list of device maps.
+  # """
+  # def fetch_subscriber_devices(owner_id, subscriber_id) do
+  #   table = table_name(owner_id)
 
-    # Match all keys starting with device_#{owner_id}_#{subscriber_id}_
-    match_pattern = {:"$1", :"$2"}
-    results =
-      :ets.tab2list(table)
-      |> Enum.filter(fn {k, _v} ->
-        String.starts_with?(k, "device_#{owner_id}_#{subscriber_id}_")
-      end)
-      |> Enum.map(fn {_k, v} -> v end)
+  #   # Match all keys starting with device_#{owner_id}_#{subscriber_id}_
+  #   match_pattern = {:"$1", :"$2"}
+  #   results =
+  #     :ets.tab2list(table)
+  #     |> Enum.filter(fn {k, _v} ->
+  #       String.starts_with?(k, "device_#{owner_id}_#{subscriber_id}_")
+  #     end)
+  #     |> Enum.map(fn {_k, v} -> v end)
 
-    {:ok, results}
-  end
+  #   {:ok, results}
+  # end
 
-  @doc """
-  Delete a device record.
-  """
-  def delete_subscriber_device(owner_id, subscriber_id, device_id) do
-    table = table_name(owner_id)
-    :ets.delete(table, device_key(owner_id, subscriber_id, device_id))
-    :ok
-  end
+  # @doc """
+  # Delete a device record.
+  # """
+  # def delete_subscriber_device(owner_id, subscriber_id, device_id) do
+  #   table = table_name(owner_id)
+  #   :ets.delete(table, device_key(owner_id, subscriber_id, device_id))
+  #   :ok
+  # end
 end
+
+# Storage.GlobalSubscriberCache.fetch_subscriber_by_owners_eid("a@domain.com")

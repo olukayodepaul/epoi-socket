@@ -15,6 +15,7 @@ defmodule Global.StateChange do
   alias Storage.PgDeviceCache
   alias ApplicationServer.Configuration 
   alias App.AllRegistry
+  alias QueueSystem
   require Logger
 
   @stale_threshold_seconds Configuration.server_stale_threshold_seconds() # filter out any device stay longer than this time without update
@@ -199,8 +200,7 @@ defmodule Global.StateChange do
 
       :offline ->
         Logger.info("User #{eid} is offline, storing in queue")
-        # S
-        # OfflineQueue.enqueue("sub-#{UUID.uuid4()}", "system@domain.com", owner_eid, data)
+        QueueSystem.enqueue(nil, nil,  eid , data)
     end
   end
 
